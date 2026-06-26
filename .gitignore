@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# macOS
+.DS_Store
+
+# Claude Code machine-local settings (keep launch.json tracked, drop local prefs)
+.claude/settings.local.json
+
+# Generated dashboard outputs — regenerate with `make dashboard` / visualize.py.
+# The source-of-truth simulation data (results/*.json) IS tracked.
+results/dashboard.html
+results/*.png

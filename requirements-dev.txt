@@ -1,0 +1,4 @@
+# Development / CI dependencies (the engine itself needs none of these to run).
+-r requirements.txt   # matplotlib, for the optional PNG charts
+pytest>=7.0
+ruff>=0.4

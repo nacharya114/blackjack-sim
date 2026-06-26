@@ -1,0 +1,506 @@
+{
+  "generated": "2026-06-26 22:00",
+  "rounds_each": 10000000,
+  "cores": 1,
+  "dollars_per_unit": 10.0,
+  "results": [
+    {
+      "rules_name": "6D S17 DAS LS 3:2",
+      "rules": {
+        "decks": 6,
+        "penetration": 0.75,
+        "dealer_hits_soft_17": false,
+        "dealer_peeks": true,
+        "blackjack_payout": 1.5,
+        "double_allowed": true,
+        "double_after_split": true,
+        "double_totals": [
+          2,
+          21
+        ],
+        "max_split_hands": 4,
+        "resplit_aces": false,
+        "hit_split_aces": false,
+        "late_surrender": true,
+        "early_surrender": false,
+        "hands_per_hour": 100
+      },
+      "strategy": "basic",
+      "strategy_kwargs": {},
+      "rounds": 10000000,
+      "dollars_per_unit": 10.0,
+      "hands_per_hour": 100,
+      "main": {
+        "ev_per_round_units": -0.0036477,
+        "house_edge": 0.0036477,
+        "element_of_risk": 0.0032231359609883646,
+        "std_per_round_units": 1.140351776569374,
+        "avg_wager_units": 1.1317239,
+        "avg_initial_units": 1.0
+      },
+      "side_bets": {},
+      "total": {
+        "ev_per_round_units": -0.0036477,
+        "house_edge": 0.0032231359609883646,
+        "std_per_round_units": 1.140351776569374
+      },
+      "hourly": {
+        "ev_units": -0.36477,
+        "ev_dollars": -3.6477,
+        "std_dollars": 114.0351776569374,
+        "ci95_round_units": 0.0007067973537646162,
+        "ci95_hour_dollars": 0.7067973537646162
+      },
+      "label": "6D S17 DAS LS 3:2",
+      "wall_seconds": 115.2,
+      "cores": 1
+    },
+    {
+      "rules_name": "6D H17 DAS noLS 3:2",
+      "rules": {
+        "decks": 6,
+        "penetration": 0.75,
+        "dealer_hits_soft_17": true,
+        "dealer_peeks": true,
+        "blackjack_payout": 1.5,
+        "double_allowed": true,
+        "double_after_split": true,
+        "double_totals": [
+          2,
+          21
+        ],
+        "max_split_hands": 4,
+        "resplit_aces": false,
+        "hit_split_aces": false,
+        "late_surrender": false,
+        "early_surrender": false,
+        "hands_per_hour": 100
+      },
+      "strategy": "basic",
+      "strategy_kwargs": {},
+      "rounds": 10000000,
+      "dollars_per_unit": 10.0,
+      "hands_per_hour": 100,
+      "main": {
+        "ev_per_round_units": -0.00639855,
+        "house_edge": 0.00639855,
+        "element_of_risk": 0.005635714357434937,
+        "std_per_round_units": 1.1587689018231522,
+        "avg_wager_units": 1.1353574,
+        "avg_initial_units": 1.0
+      },
+      "side_bets": {},
+      "total": {
+        "ev_per_round_units": -0.00639855,
+        "house_edge": 0.005635714357434937,
+        "std_per_round_units": 1.1587689018231522
+      },
+      "hourly": {
+        "ev_units": -0.6398550000000001,
+        "ev_dollars": -6.39855,
+        "std_dollars": 115.87689018231522,
+        "ci95_round_units": 0.0007182124062605072,
+        "ci95_hour_dollars": 0.7182124062605072
+      },
+      "label": "6D H17 DAS noLS 3:2",
+      "wall_seconds": 110.3,
+      "cores": 1
+    },
+    {
+      "rules_name": "2D H17 DAS noLS 3:2",
+      "rules": {
+        "decks": 2,
+        "penetration": 0.75,
+        "dealer_hits_soft_17": true,
+        "dealer_peeks": true,
+        "blackjack_payout": 1.5,
+        "double_allowed": true,
+        "double_after_split": true,
+        "double_totals": [
+          2,
+          21
+        ],
+        "max_split_hands": 4,
+        "resplit_aces": false,
+        "hit_split_aces": false,
+        "late_surrender": false,
+        "early_surrender": false,
+        "hands_per_hour": 100
+      },
+      "strategy": "basic",
+      "strategy_kwargs": {},
+      "rounds": 10000000,
+      "dollars_per_unit": 10.0,
+      "hands_per_hour": 100,
+      "main": {
+        "ev_per_round_units": -0.00438835,
+        "house_edge": 0.00438835,
+        "element_of_risk": 0.003877666036228014,
+        "std_per_round_units": 1.1550855599506655,
+        "avg_wager_units": 1.1316988,
+        "avg_initial_units": 1.0
+      },
+      "side_bets": {},
+      "total": {
+        "ev_per_round_units": -0.00438835,
+        "house_edge": 0.003877666036228014,
+        "std_per_round_units": 1.1550855599506655
+      },
+      "hourly": {
+        "ev_units": -0.43883500000000003,
+        "ev_dollars": -4.38835,
+        "std_dollars": 115.50855599506654,
+        "ci95_round_units": 0.0007159294473157542,
+        "ci95_hour_dollars": 0.7159294473157541
+      },
+      "label": "2D H17 DAS 3:2",
+      "wall_seconds": 110.8,
+      "cores": 1
+    },
+    {
+      "rules_name": "1D S17 noDAS noLS 3:2",
+      "rules": {
+        "decks": 1,
+        "penetration": 0.65,
+        "dealer_hits_soft_17": false,
+        "dealer_peeks": true,
+        "blackjack_payout": 1.5,
+        "double_allowed": true,
+        "double_after_split": false,
+        "double_totals": [
+          2,
+          21
+        ],
+        "max_split_hands": 4,
+        "resplit_aces": false,
+        "hit_split_aces": false,
+        "late_surrender": false,
+        "early_surrender": false,
+        "hands_per_hour": 100
+      },
+      "strategy": "basic",
+      "strategy_kwargs": {},
+      "rounds": 10000000,
+      "dollars_per_unit": 10.0,
+      "hands_per_hour": 100,
+      "main": {
+        "ev_per_round_units": -0.0015377,
+        "house_edge": 0.0015377,
+        "element_of_risk": 0.0013800507325927112,
+        "std_per_round_units": 1.1306407755399441,
+        "avg_wager_units": 1.1142344,
+        "avg_initial_units": 1.0
+      },
+      "side_bets": {},
+      "total": {
+        "ev_per_round_units": -0.0015377,
+        "house_edge": 0.0013800507325927112,
+        "std_per_round_units": 1.1306407755399441
+      },
+      "hourly": {
+        "ev_units": -0.15377,
+        "ev_dollars": -1.5376999999999998,
+        "std_dollars": 113.06407755399441,
+        "ci95_round_units": 0.0007007784129684216,
+        "ci95_hour_dollars": 0.7007784129684216
+      },
+      "label": "1D S17 noDAS 3:2",
+      "wall_seconds": 113.4,
+      "cores": 1
+    },
+    {
+      "rules_name": "6D H17 noDAS noLS 6:5",
+      "rules": {
+        "decks": 6,
+        "penetration": 0.75,
+        "dealer_hits_soft_17": true,
+        "dealer_peeks": true,
+        "blackjack_payout": 1.2,
+        "double_allowed": true,
+        "double_after_split": false,
+        "double_totals": [
+          2,
+          21
+        ],
+        "max_split_hands": 4,
+        "resplit_aces": false,
+        "hit_split_aces": false,
+        "late_surrender": false,
+        "early_surrender": false,
+        "hands_per_hour": 100
+      },
+      "strategy": "basic",
+      "strategy_kwargs": {},
+      "rounds": 10000000,
+      "dollars_per_unit": 10.0,
+      "hands_per_hour": 100,
+      "main": {
+        "ev_per_round_units": -0.021396739999851516,
+        "house_edge": 0.021396739999851516,
+        "element_of_risk": 0.019048613592572396,
+        "std_per_round_units": 1.1227859981224153,
+        "avg_wager_units": 1.1232702,
+        "avg_initial_units": 1.0
+      },
+      "side_bets": {},
+      "total": {
+        "ev_per_round_units": -0.021396739999851516,
+        "house_edge": 0.019048613592572396,
+        "std_per_round_units": 1.1227859981224153
+      },
+      "hourly": {
+        "ev_units": -2.1396739999851517,
+        "ev_dollars": -21.39673999985152,
+        "std_dollars": 112.27859981224154,
+        "ci95_round_units": 0.0006959099714864244,
+        "ci95_hour_dollars": 0.6959099714864243
+      },
+      "label": "6D H17 noDAS 6:5",
+      "wall_seconds": 110.0,
+      "cores": 1
+    },
+    {
+      "rules_name": "6D S17 DAS LS 3:2",
+      "rules": {
+        "decks": 6,
+        "penetration": 0.85,
+        "dealer_hits_soft_17": false,
+        "dealer_peeks": true,
+        "blackjack_payout": 1.5,
+        "double_allowed": true,
+        "double_after_split": true,
+        "double_totals": [
+          2,
+          21
+        ],
+        "max_split_hands": 4,
+        "resplit_aces": false,
+        "hit_split_aces": false,
+        "late_surrender": true,
+        "early_surrender": false,
+        "hands_per_hour": 100
+      },
+      "strategy": "counter",
+      "strategy_kwargs": {},
+      "rounds": 10000000,
+      "dollars_per_unit": 10.0,
+      "hands_per_hour": 100,
+      "main": {
+        "ev_per_round_units": 0.01923395,
+        "house_edge": -0.010605945476674358,
+        "element_of_risk": -0.009226287841357707,
+        "std_per_round_units": 3.4707083909123035,
+        "avg_wager_units": 2.08469,
+        "avg_initial_units": 1.8135064
+      },
+      "side_bets": {},
+      "total": {
+        "ev_per_round_units": 0.01923395,
+        "house_edge": -0.009226287841357707,
+        "std_per_round_units": 3.4707083909123035
+      },
+      "hourly": {
+        "ev_units": 1.923395,
+        "ev_dollars": 19.23395,
+        "std_dollars": 347.07083909123037,
+        "ci95_round_units": 0.00215116734747002,
+        "ci95_hour_dollars": 2.15116734747002
+      },
+      "label": "6D S17 DAS LS 3:2 (deep)",
+      "wall_seconds": 136.1,
+      "cores": 1
+    },
+    {
+      "rules_name": "6D S17 DAS LS 3:2",
+      "rules": {
+        "decks": 6,
+        "penetration": 0.75,
+        "dealer_hits_soft_17": false,
+        "dealer_peeks": true,
+        "blackjack_payout": 1.5,
+        "double_allowed": true,
+        "double_after_split": true,
+        "double_totals": [
+          2,
+          21
+        ],
+        "max_split_hands": 4,
+        "resplit_aces": false,
+        "hit_split_aces": false,
+        "late_surrender": true,
+        "early_surrender": false,
+        "hands_per_hour": 100
+      },
+      "strategy": "basic",
+      "strategy_kwargs": {
+        "side_bets": [
+          "perfect_pairs"
+        ],
+        "side_bet_unit": 1.0
+      },
+      "rounds": 10000000,
+      "dollars_per_unit": 10.0,
+      "hands_per_hour": 100,
+      "main": {
+        "ev_per_round_units": -0.0036477,
+        "house_edge": 0.0036477,
+        "element_of_risk": 0.0032231359609883646,
+        "std_per_round_units": 1.140351776569374,
+        "avg_wager_units": 1.1317239,
+        "avg_initial_units": 1.0
+      },
+      "side_bets": {
+        "perfect_pairs": {
+          "ev_per_round_units": -0.0612269,
+          "house_edge": 0.0612269,
+          "rounds_wagered": 10000000
+        }
+      },
+      "total": {
+        "ev_per_round_units": -0.0648746,
+        "house_edge": 0.030432928016616036,
+        "std_per_round_units": 4.089850634065096
+      },
+      "hourly": {
+        "ev_units": -6.4874600000000004,
+        "ev_dollars": -64.8746,
+        "std_dollars": 408.98506340650954,
+        "ci95_round_units": 0.0025349156855317885,
+        "ci95_hour_dollars": 2.5349156855317885
+      },
+      "label": "6D S17 + Perfect Pairs",
+      "wall_seconds": 124.8,
+      "cores": 1
+    },
+    {
+      "rules_name": "6D S17 DAS LS 3:2",
+      "rules": {
+        "decks": 6,
+        "penetration": 0.75,
+        "dealer_hits_soft_17": false,
+        "dealer_peeks": true,
+        "blackjack_payout": 1.5,
+        "double_allowed": true,
+        "double_after_split": true,
+        "double_totals": [
+          2,
+          21
+        ],
+        "max_split_hands": 4,
+        "resplit_aces": false,
+        "hit_split_aces": false,
+        "late_surrender": true,
+        "early_surrender": false,
+        "hands_per_hour": 100
+      },
+      "strategy": "basic",
+      "strategy_kwargs": {
+        "side_bets": [
+          "21+3"
+        ],
+        "side_bet_unit": 1.0
+      },
+      "rounds": 10000000,
+      "dollars_per_unit": 10.0,
+      "hands_per_hour": 100,
+      "main": {
+        "ev_per_round_units": -0.0036477,
+        "house_edge": 0.0036477,
+        "element_of_risk": 0.0032231359609883646,
+        "std_per_round_units": 1.140351776569374,
+        "avg_wager_units": 1.1317239,
+        "avg_initial_units": 1.0
+      },
+      "side_bets": {
+        "21+3": {
+          "ev_per_round_units": -0.047517,
+          "house_edge": 0.047517,
+          "rounds_wagered": 10000000
+        }
+      },
+      "total": {
+        "ev_per_round_units": -0.0511647,
+        "house_edge": 0.02400156042722043,
+        "std_per_round_units": 4.110494181128365
+      },
+      "hourly": {
+        "ev_units": -5.11647,
+        "ev_dollars": -51.164699999999996,
+        "std_dollars": 411.0494181128365,
+        "ci95_round_units": 0.0025477106885619313,
+        "ci95_hour_dollars": 2.5477106885619314
+      },
+      "label": "6D S17 + 21+3",
+      "wall_seconds": 155.9,
+      "cores": 1
+    },
+    {
+      "rules_name": "6D S17 DAS LS 3:2",
+      "rules": {
+        "decks": 6,
+        "penetration": 0.75,
+        "dealer_hits_soft_17": false,
+        "dealer_peeks": true,
+        "blackjack_payout": 1.5,
+        "double_allowed": true,
+        "double_after_split": true,
+        "double_totals": [
+          2,
+          21
+        ],
+        "max_split_hands": 4,
+        "resplit_aces": false,
+        "hit_split_aces": false,
+        "late_surrender": true,
+        "early_surrender": false,
+        "hands_per_hour": 100
+      },
+      "strategy": "basic",
+      "strategy_kwargs": {
+        "side_bets": [
+          "perfect_pairs",
+          "21+3"
+        ],
+        "side_bet_unit": 1.0
+      },
+      "rounds": 10000000,
+      "dollars_per_unit": 10.0,
+      "hands_per_hour": 100,
+      "main": {
+        "ev_per_round_units": -0.0036477,
+        "house_edge": 0.0036477,
+        "element_of_risk": 0.0032231359609883646,
+        "std_per_round_units": 1.140351776569374,
+        "avg_wager_units": 1.1317239,
+        "avg_initial_units": 1.0
+      },
+      "side_bets": {
+        "perfect_pairs": {
+          "ev_per_round_units": -0.0612269,
+          "house_edge": 0.0612269,
+          "rounds_wagered": 10000000
+        },
+        "21+3": {
+          "ev_per_round_units": -0.047517,
+          "house_edge": 0.047517,
+          "rounds_wagered": 10000000
+        }
+      },
+      "total": {
+        "ev_per_round_units": -0.1123916,
+        "house_edge": 0.035888093455492674,
+        "std_per_round_units": 6.047814914153372
+      },
+      "hourly": {
+        "ev_units": -11.23916,
+        "ev_dollars": -112.3916,
+        "std_dollars": 604.7814914153372,
+        "ci95_round_units": 0.0037484745191886295,
+        "ci95_hour_dollars": 3.7484745191886293
+      },
+      "label": "6D S17 + both sidebets",
+      "wall_seconds": 163.7,
+      "cores": 1
+    }
+  ]
+}

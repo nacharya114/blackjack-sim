@@ -1,0 +1,24 @@
+[project]
+name = "blackjack-sim"
+version = "0.1.0"
+description = "Monte-Carlo blackjack EV / house-edge simulator with an offline dashboard"
+requires-python = ">=3.9"
+# The engine itself needs only the standard library; matplotlib is optional
+# (PNG charts only). See requirements.txt / requirements-dev.txt.
+dependencies = []
+
+[tool.pytest.ini_options]
+# Let tests import the top-level modules (run_sim, visualize, betspread) and the
+# `blackjack` package directly when pytest is run from the repo root.
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+target-version = "py39"
+
+[tool.ruff.lint]
+# Keep linting light: pyflakes (F) + a pragmatic subset of pycodestyle (E).
+select = ["E", "F", "W"]
+ignore = ["E741"]  # ambiguous var names (l, r) read fine in this math-y code

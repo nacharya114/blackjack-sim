@@ -1,0 +1,5 @@
+# The simulation engine is pure Python standard library -- no installs needed
+# to run `run_sim.py`. The packages below are only used by `visualize.py`
+# to render the optional static PNG charts (the interactive HTML dashboard
+# needs neither of them, nor any internet connection).
+matplotlib>=3.5

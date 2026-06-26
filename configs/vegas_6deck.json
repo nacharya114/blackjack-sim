@@ -1,0 +1,19 @@
+{
+  "decks": 6,
+  "penetration": 0.75,
+  "dealer_hits_soft_17": false,
+  "dealer_peeks": true,
+  "blackjack_payout": 1.5,
+  "double_allowed": true,
+  "double_after_split": true,
+  "double_totals": [
+    2,
+    21
+  ],
+  "max_split_hands": 4,
+  "resplit_aces": false,
+  "hit_split_aces": false,
+  "late_surrender": true,
+  "early_surrender": false,
+  "hands_per_hour": 100
+}
