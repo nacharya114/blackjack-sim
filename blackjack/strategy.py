@@ -174,8 +174,10 @@ ILLUSTRIOUS_18 = [
     (10, False, 11, "D", 4, ">="),
     (9,  False, 7,  "D", 3, ">="),
     (16, False, 9,  "S", 5, ">="),
-    (13, False, 2,  "S", -1, ">="),
-    (12, False, 4,  "S", 0,  ">="),
+    # 13v2 and 12v4 are stand-by-basic hands whose index play is to HIT at deeply
+    # negative counts (like 12v5/12v6/13v3 below), so they use direction "<=".
+    (13, False, 2,  "H", -1, "<="),
+    (12, False, 4,  "H", 0,  "<="),
     (12, False, 5,  "H", -2, "<="),
     (12, False, 6,  "H", -1, "<="),
     (13, False, 3,  "H", -2, "<="),

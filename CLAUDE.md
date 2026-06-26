@@ -48,8 +48,12 @@ into a self-contained `dashboard.html`.**
   dashboard matrix in one place. `single` accepts `--bet-ramp` / `--min-bet`.
 - `betspread.py` — sweeps a counter's bet spread to find the lowest-risk
   breakeven spread (see `docs/bet_spreads.md`).
+- `blackjack/evcalc.py` + `strategy_ev.py` — analytic count-adjusted per-action
+  EV calculator and the generator for the dashboard's strategy-deviation panel;
+  self-validates EV crossovers against the engine indices (see
+  `docs/strategy_deviations.md`).
 - `visualize.py` — builds `dashboard.html` (sweep data + any `betspread_*.json`
-  inlined at `/*__…__*/` markers) and optional PNGs.
+  + `strategy_ev.json` inlined at `/*__…__*/` markers) and optional PNGs.
 - `_run_chunk.py` — internal helper to compute a slice of the sweep resumably.
 - `configs/` example rules JSON · `docs/` analysis writeups · `results/`
   generated data + dashboard.

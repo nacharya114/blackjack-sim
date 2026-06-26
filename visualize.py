@@ -18,6 +18,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE = os.path.join(HERE, "dashboard_template.html")
 MARKER = "/*__SWEEP_DATA__*/ null"
 MARKER_BS = "/*__BETSPREAD_DATA__*/ null"
+MARKER_ST = "/*__STRATEGY_DATA__*/ null"
 
 
 def load(path):
@@ -25,7 +26,7 @@ def load(path):
         return json.load(f)
 
 
-def build_dashboard(payload, template_path, out_path, betspread=None):
+def build_dashboard(payload, template_path, out_path, betspread=None, strategy=None):
     with open(template_path) as f:
         html = f.read()
     if MARKER not in html:
@@ -34,6 +35,8 @@ def build_dashboard(payload, template_path, out_path, betspread=None):
     html = html.replace(MARKER, json.dumps(payload, separators=(",", ":")), 1)
     # Optional bet-spread panel data (a list of per-penetration payloads).
     html = html.replace(MARKER_BS, json.dumps(betspread or [], separators=(",", ":")), 1)
+    # Optional strategy-deviation panel data.
+    html = html.replace(MARKER_ST, json.dumps(strategy, separators=(",", ":")), 1)
     with open(out_path, "w") as f:
         f.write(html)
     return out_path
@@ -157,6 +160,9 @@ def main():
     ap.add_argument("--betspread", nargs="*", default=None,
                     help="bet-spread JSON file(s) from betspread.py for the spread panel; "
                          "default: auto-discover results/betspread_*.json next to --data")
+    ap.add_argument("--strategy", default=None,
+                    help="strategy-deviation JSON from strategy_ev.py; "
+                         "default: results/strategy_ev.json next to --data if present")
     args = ap.parse_args()
 
     payload = load(args.data)
@@ -164,9 +170,15 @@ def main():
     out_html = args.out or os.path.join(out_dir, "dashboard.html")
 
     betspread = discover_betspread(out_dir, args.betspread)
-    build_dashboard(payload, args.template, out_html, betspread=betspread)
-    print(f"  Wrote {out_html}"
-          + (f"  (+{len(betspread)} bet-spread panel(s))" if betspread else ""))
+    strat_path = args.strategy or os.path.join(out_dir, "strategy_ev.json")
+    strategy = load(strat_path) if os.path.exists(strat_path) else None
+    build_dashboard(payload, args.template, out_html, betspread=betspread, strategy=strategy)
+    extras = []
+    if betspread:
+        extras.append(f"{len(betspread)} bet-spread panel(s)")
+    if strategy:
+        extras.append("strategy panel")
+    print(f"  Wrote {out_html}" + (f"  (+{', '.join(extras)})" if extras else ""))
 
     if not args.no_png:
         for p in make_pngs(payload, out_dir):

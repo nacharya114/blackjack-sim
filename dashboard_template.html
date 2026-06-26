@@ -94,6 +94,10 @@
   button.act{background:var(--brass); color:#1a1205; border:0; border-radius:8px; padding:9px 14px;
     font-family:var(--sans); font-weight:600; font-size:13px; cursor:pointer}
   button.act:hover{background:var(--brass-2)}
+  button.seg{background:var(--chip); color:var(--muted); border:1px solid var(--line);
+    border-radius:8px; padding:6px 12px; font-family:var(--sans); font-size:12px; cursor:pointer}
+  button.seg.on{background:var(--brass); color:#1a1205; font-weight:600; border-color:var(--brass)}
+  td .act-s{color:var(--good)} td .act-h{color:#6db3ff} td .act-d{color:var(--brass-2)} td .act-r{color:var(--bad)}
   a{color:var(--brass-2)}
 </style>
 </head>
@@ -185,12 +189,49 @@
         Where house edge crosses zero is the breakeven spread; the smallest spread at or past it is the lowest-risk one
         (least volatility). See <span class="chip">docs/bet_spreads.md</span>.</div>
     </div>
+
+    <div class="card full" id="strat-card" style="display:none">
+      <h2>Card-counter strategy <span class="tag">Hi-Lo deviations</span>
+        <span style="margin-left:auto; display:flex; gap:6px">
+          <button class="seg on" id="strat-tab-dev">Deviations</button>
+          <button class="seg" id="strat-tab-ev">Action EVs</button>
+        </span>
+      </h2>
+
+      <div id="strat-dev">
+        <div style="overflow-x:auto">
+          <table id="strat-table">
+            <thead><tr>
+              <th>Hand</th><th>Dealer</th><th>Basic play</th>
+              <th>Index (TC)</th><th>Deviate to</th><th>When</th>
+            </tr></thead>
+            <tbody id="strat-table-body"></tbody>
+          </table>
+        </div>
+        <div class="note">Play basic strategy until the running/true count reaches the index, then
+          switch to the deviation. Indices shown are Hi-Lo (the "Illustrious 18" + insurance).</div>
+      </div>
+
+      <div id="strat-ev" style="display:none">
+        <span class="ctl" style="flex-direction:row; align-items:center; gap:8px; margin-bottom:10px">
+          <label style="margin:0">Hand</label><select id="strat-hand"></select>
+        </span>
+        <canvas id="strat-canvas" width="900" height="320"></canvas>
+        <div class="legend" id="strat-legend"></div>
+        <div id="strat-ev-note" class="note"></div>
+      </div>
+
+      <div class="note">EVs are per unit wagered, computed on a count-adjusted infinite deck (total-dependent;
+        hitting plays optimally after). The true count where the basic and deviation curves cross <b>is</b> the index.
+        See <span class="chip">docs/strategy_deviations.md</span>.</div>
+    </div>
   </div>
 </div>
 
 <script>
 const SWEEP_DATA = /*__SWEEP_DATA__*/ null;
 const BETSPREAD_DATA = /*__BETSPREAD_DATA__*/ null;
+const STRATEGY_DATA = /*__STRATEGY_DATA__*/ null;
 
 let DATA = SWEEP_DATA;
 let selIndex = 0;
@@ -440,6 +481,128 @@ function drawBetspread(){
     : `No zero-crossing in this range &middot; ${(d.rounds_each||0).toLocaleString()} rounds/point`;
 }
 
+// ---- card-counter strategy panel ----
+const ACT_WORD={S:"Stand",H:"Hit",D:"Double",R:"Surrender"};
+const ACT_CLS={S:"act-s",H:"act-h",D:"act-d",R:"act-r"};
+const EV_COLOR={stand:"#5fcf9a",hit:"#6db3ff",double:"#e2c463",surrender:"#e0705c"};
+const upName=u=>u===11?"A":(""+u);
+
+function setupStrategy(){
+  const D=STRATEGY_DATA;
+  if(!D || !D.hands || !D.hands.length) return;
+  $("strat-card").style.display="";
+
+  // deviation table
+  const tb=$("strat-table-body"); tb.innerHTML="";
+  for(const r of D.deviation_table){
+    const when=(r.direction===">=")?`TC ≥ ${r.index>=0?"+":""}${r.index}`
+                                   :`TC ≤ ${r.index>=0?"+":""}${r.index}`;
+    tb.insertAdjacentHTML("beforeend",
+      `<tr><td>${r.total} vs ${upName(r.up)}</td><td class="sub">${upName(r.up)}</td>`+
+      `<td class="${ACT_CLS[r.basic]}">${ACT_WORD[r.basic]}</td>`+
+      `<td>${r.index>=0?"+":""}${r.index}</td>`+
+      `<td class="${ACT_CLS[r.deviate]}">${ACT_WORD[r.deviate]}</td>`+
+      `<td class="sub">${when}</td></tr>`);
+  }
+  if(D.insurance){
+    tb.insertAdjacentHTML("beforeend",
+      `<tr><td>Insurance</td><td class="sub">A</td>`+
+      `<td class="act-r">No</td><td>+${D.insurance.index}</td>`+
+      `<td class="act-s">Take</td><td class="sub">TC ≥ +${D.insurance.index}</td></tr>`);
+  }
+
+  // hand selector for the Action-EV view
+  const sel=$("strat-hand");
+  sel.innerHTML = D.hands.map((h,i)=>`<option value="${i}">${h.key}  (${ACT_WORD[h.basic]}→${ACT_WORD[h.deviate]})</option>`).join("")
+                + `<option value="ins">Insurance</option>`;
+  sel.onchange=drawStrategyChart;
+
+  // tab toggle
+  $("strat-tab-dev").onclick=()=>stratTab("dev");
+  $("strat-tab-ev").onclick=()=>stratTab("ev");
+  drawStrategyChart();
+}
+
+function stratTab(which){
+  const dev=which==="dev";
+  $("strat-tab-dev").classList.toggle("on",dev);
+  $("strat-tab-ev").classList.toggle("on",!dev);
+  $("strat-dev").style.display=dev?"":"none";
+  $("strat-ev").style.display=dev?"none":"";
+  if(!dev) drawStrategyChart();
+}
+
+function drawStrategyChart(){
+  const D=STRATEGY_DATA, grid=D.tc_grid;
+  const cvs=$("strat-canvas"), ctx=cvs.getContext("2d");
+  const W=cvs.width,H=cvs.height,padL=58,padR=16,padT=14,padB=38;
+  ctx.clearRect(0,0,W,H);
+  const v=$("strat-hand").value;
+  const xmin=grid[0], xmax=grid[grid.length-1];
+  const x=t=>padL+(W-padL-padR)*((t-xmin)/((xmax-xmin)||1));
+
+  let series, index, note, emphasize;
+  if(v==="ins"){
+    series={insurance:D.insurance.ev};
+    index=D.insurance.index; emphasize=new Set(["insurance"]);
+    EV_COLOR.insurance="#e2c463";
+    note=`Insurance pays 2:1 and turns +EV once tens exceed 1/3 of the deck — `+
+         `analytic crossover at TC ${fmtTc(D.insurance.crossover)} (Hi-Lo index +${index}). `+
+         `Below that it is a losing bet.`;
+  } else {
+    const h=D.hands[+v||0];
+    series={stand:h.ev.stand,hit:h.ev.hit,double:h.ev.double,surrender:h.ev.surrender};
+    index=h.index; emphasize=new Set([h.basic_action,h.deviate_action]);
+    const when=(h.direction===">=")?`TC ≥ ${fmtTc(h.index)}`:`TC ≤ ${fmtTc(h.index)}`;
+    note=`<b>${h.key}</b>: basic <span class="${ACT_CLS[h.basic]}">${ACT_WORD[h.basic]}</span>, `+
+         `deviate to <span class="${ACT_CLS[h.deviate]}">${ACT_WORD[h.deviate]}</span> when ${when}. `+
+         `The ${ACT_WORD[h.deviate]} and ${ACT_WORD[h.basic]} curves cross at TC ${fmtTc(h.crossover)} — that crossing is the index.`;
+  }
+
+  // y-range over shown series, always including 0
+  let lo=0,hi=0;
+  for(const arr of Object.values(series)){ for(const y of arr){ lo=Math.min(lo,y); hi=Math.max(hi,y);} }
+  const pad=(hi-lo)*0.08||0.1; lo-=pad; hi+=pad;
+  const y=val=>padT+(H-padT-padB)*(1-(val-lo)/(hi-lo));
+
+  // grid + y ticks
+  ctx.font="11px ui-monospace,monospace"; ctx.lineWidth=1;
+  for(let i=0;i<=5;i++){
+    const val=lo+(hi-lo)*i/5, yy=y(val);
+    ctx.strokeStyle="rgba(255,255,255,.07)"; ctx.beginPath();ctx.moveTo(padL,yy);ctx.lineTo(W-padR,yy);ctx.stroke();
+    ctx.fillStyle="#8caa9b"; ctx.textAlign="right"; ctx.fillText((val>=0?"+":"")+val.toFixed(2), padL-6, yy+3);
+  }
+  // zero line + index line
+  ctx.strokeStyle="rgba(255,255,255,.30)"; ctx.beginPath();ctx.moveTo(padL,y(0));ctx.lineTo(W-padR,y(0));ctx.stroke();
+  if(index>=xmin && index<=xmax){
+    ctx.strokeStyle="rgba(201,162,39,.55)"; ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(x(index),padT);ctx.lineTo(x(index),H-padB);ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle="#c9a227"; ctx.textAlign="center"; ctx.fillText("index "+fmtTc(index), x(index), padT+10);
+  }
+  // x ticks
+  ctx.fillStyle="#8caa9b"; ctx.textAlign="center";
+  for(let t=Math.ceil(xmin);t<=xmax;t+=2) ctx.fillText((t>=0?"+":"")+t, x(t), H-padB+16);
+  ctx.fillText("true count", (padL+W-padR)/2, H-6);
+
+  // series lines
+  for(const [name,arr] of Object.entries(series)){
+    ctx.strokeStyle=EV_COLOR[name]||"#ccc";
+    ctx.lineWidth=emphasize.has(name)?2.6:1.2;
+    ctx.globalAlpha=emphasize.has(name)?1:0.5;
+    ctx.beginPath();
+    arr.forEach((val,i)=>{const xx=x(grid[i]),yy=y(val); i?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy);});
+    ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+
+  // legend
+  $("strat-legend").innerHTML=Object.keys(series).map(name=>
+    `<span style="${emphasize.has(name)?'':'opacity:.6'}"><i style="background:${EV_COLOR[name]}"></i>`+
+    `${name[0].toUpperCase()+name.slice(1)}${emphasize.has(name)?'':' (dominated)'}</span>`).join("");
+  $("strat-ev-note").innerHTML=note;
+}
+function fmtTc(x){ return x==null?"n/a":(x>=0?"+":"")+(+x).toFixed(2).replace(/\.00$/,""); }
+
 // events
 document.querySelectorAll("#tbl th").forEach(th=>{
   th.onclick=()=>{ const k=th.dataset.k; if(k===sortKey)sortDir*=-1; else {sortKey=k; sortDir = (k==="he"?1:-1);} render(); };
@@ -453,6 +616,7 @@ $("file").addEventListener("change", e=>{
 });
 
 setupBetspread();
+setupStrategy();
 if(DATA && DATA.results){ render(); }
 else {
   document.querySelector(".wrap").insertAdjacentHTML("beforeend",

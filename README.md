@@ -93,6 +93,11 @@ so it opens straight from disk — no local server, no CORS issues. It gives you
   exist): a dual-axis chart of house edge and per-round volatility vs. the
   counter's bet spread, with the breakeven crossover marked and a penetration
   toggle. Generate the data with `betspread.py`; details in `docs/bet_spreads.md`.
+- A **card-counter strategy panel** (shown when `results/strategy_ev.json`
+  exists): a toggle between the Hi-Lo **deviation table** (Illustrious 18 +
+  insurance) and **per-action EV curves** vs. true count, where the basic and
+  deviation curves cross at the index. Generate with `strategy_ev.py`; details
+  in `docs/strategy_deviations.md`.
 - A **file picker** to load any other `sweep.json` you generate.
 
 `visualize.py` also writes three static PNGs (`house_edge_by_ruleset.png`,
@@ -163,18 +168,21 @@ blackjack-sim/
 ├── run_sim.py              # CLI: `single` and `sweep` (single takes --bet-ramp)
 ├── visualize.py            # builds dashboard.html + PNG charts from a sweep
 ├── betspread.py            # bet-spread breakeven search for a card counter
+├── strategy_ev.py          # Hi-Lo deviation + action-EV data for the strategy panel
 ├── dashboard_template.html # offline dashboard template (data inlined at build)
 ├── requirements.txt        # matplotlib (only for the PNGs)
 ├── configs/
 │   └── vegas_6deck.json    # example rules file
 ├── docs/
-│   └── bet_spreads.md      # lowest-risk breakeven spread analysis
-├── results/                # sweep.json, betspread_*.json, dashboard.html, PNGs
+│   ├── bet_spreads.md          # lowest-risk breakeven spread analysis
+│   └── strategy_deviations.md  # deviations + per-action EV methodology
+├── results/                # sweep.json, betspread_*.json, strategy_ev.json, dashboard.html, PNGs
 └── blackjack/              # the engine
     ├── cards.py            # card encoding, hand totals, blackjack check
     ├── rules.py            # Rules dataclass + presets
     ├── shoe.py             # shoe, dealing, running/true count
     ├── strategy.py         # basic-strategy tables + Hi-Lo deviations
+    ├── evcalc.py           # analytic count-adjusted per-action EV calculator
     ├── sidebets.py         # Perfect Pairs & 21+3 paytables and resolution
     ├── players.py          # BasicStrategy / CardCounter bettors
     ├── game.py             # one full round (splits, doubles, surrender, dealer)

@@ -1,6 +1,6 @@
 # Convenience targets. The engine needs no dependencies; `make dev` adds the
 # test/lint/PNG tooling.
-.PHONY: help dev test lint sweep dashboard betspread clean
+.PHONY: help dev test lint sweep dashboard betspread strategy clean
 
 ROUNDS ?= 10000000
 CORES  ?= 0
@@ -25,6 +25,9 @@ sweep:      ## run the full comparison matrix -> results/sweep.json
 betspread:  ## bet-spread breakeven search at two penetrations -> results/betspread_*.json
 	python betspread.py --pen 0.75  --rounds $(ROUNDS) --cores $(CORES) --out results/betspread_pen75.json
 	python betspread.py --pen 0.833 --rounds $(ROUNDS) --cores $(CORES) --out results/betspread_pen83.json
+
+strategy:   ## generate Hi-Lo deviation + action-EV data -> results/strategy_ev.json
+	python strategy_ev.py --out results/strategy_ev.json
 
 dashboard:  ## (re)build results/dashboard.html from existing results JSON
 	python visualize.py --data results/sweep.json

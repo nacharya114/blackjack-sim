@@ -132,6 +132,27 @@ def test_21plus3_combinations():
     assert sb.twentyone_plus_three_net(_card(0, 0), _card(5, 1), _card(10, 2)) == -1.0
 
 
+def test_no_deviation_is_a_noop():
+    """Every Illustrious-18 index play must actually change the action versus
+    basic strategy on the favourable side of its threshold (regression guard:
+    13v2 and 12v4 were once encoded as stand-over-stand no-ops)."""
+    from blackjack import strategy as strat
+
+    rules = Rules(decks=6, dealer_hits_soft_17=False, double_after_split=True,
+                  late_surrender=False)
+    for total, soft, up, dev_code, thr, direction in strat.ILLUSTRIOUS_18:
+        # a representative two-card hard hand of this total (e.g. 16 -> 10 + 6)
+        hi = min(10, total - 2)
+        cards = [hi - 2, (total - hi) - 2]   # rank indices; suits irrelevant here
+        # nudge to the deviating side of the threshold
+        tc_dev = thr + 1 if direction == ">=" else thr - 1
+        dev = strat.counter_action(cards, up, tc_dev, can_double=True,
+                                   can_split=True, can_surrender=False, rules=rules)
+        base = strat.basic_action(cards, up, can_double=True, can_split=True,
+                                  can_surrender=False, rules=rules)
+        assert dev != base, f"deviation {total}v{up} is a no-op (both {base})"
+
+
 def test_resolve_side_bets_only_active():
     pc = [_card(5, 0), _card(5, 0)]
     out = sb.resolve_side_bets(pc, _card(0, 0), {"perfect_pairs"})
