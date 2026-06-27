@@ -3,3 +3,4 @@
 pytest>=7.0
 ruff>=0.4
 cython>=3.0           # builds the optional native (fast) round engine
+setuptools>=64        # build backend for setup.py (not bundled in Python 3.12+)

@@ -17,7 +17,7 @@ shrinks the 95% CI on the house edge to **±0.016%** (vs ±0.07% at 10M).
 ## Building it
 
 ```bash
-pip install cython          # or: make dev   (includes cython)
+pip install cython setuptools   # or: make dev   (installs both)
 make build                  # python setup.py build_ext --inplace
 ```
 

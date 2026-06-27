@@ -89,7 +89,7 @@ Python) and uses real threads across cores, so 100M+ round runs — and the tigh
 confidence intervals that come with them — take seconds instead of minutes.
 
 ```bash
-pip install cython      # or: make dev
+pip install cython setuptools   # or: make dev
 make build              # python setup.py build_ext --inplace  (needs a C compiler)
 
 # --engine {auto,python,c}; "auto" (the default) uses the native engine if built
@@ -234,7 +234,7 @@ blackjack-sim/
 
 Python 3.9+. The engine needs **nothing but the standard library**. For the
 optional PNG charts: `pip install -r requirements.txt`. For the optional native
-engine: a C compiler plus `pip install cython`, then `make build`.
+engine: a C compiler plus `pip install cython setuptools`, then `make build`.
 
 ## Development & CI
 
