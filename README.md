@@ -197,10 +197,11 @@ optional PNG charts: `pip install -r requirements.txt`.
 ## Development & CI
 
 ```bash
-make dev      # install dev tooling (pytest, ruff, matplotlib)
-make test     # run the test suite (~15s; small fixed-seed sims + unit tests)
-make lint     # ruff check .
-make help     # list all targets
+make dev       # install dev tooling (pytest, ruff, matplotlib)
+make test      # run the test suite (~15s; small fixed-seed sims + unit tests)
+make lint      # ruff check .
+make validate  # cross-check the strategy tables against the EV calculator
+make help      # list all targets
 ```
 
 GitHub Actions (`.github/workflows/ci.yml`) runs lint + tests across Python

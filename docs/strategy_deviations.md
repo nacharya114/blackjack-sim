@@ -59,6 +59,23 @@ so the index play could never change anything (a no-op). They are hands you
 13v3. Fixed in `ILLUSTRIOUS_18`, with `tests/test_engine_units.py`
 (`test_no_deviation_is_a_noop`) guarding against a regression.
 
+## Validating the tables (`validate_strategy.py`)
+
+The chart stays the engine's runtime default; `validate_strategy.py` is an
+offline cross-check that proves it is EV-correct (and a CI guard via
+`tests/test_strategy_validation.py`). Run `make validate`. It:
+
+1. checks all **170 hard basic-strategy cells** against the EV-optimal action on
+   a neutral deck, under both S17 and H17 (170/170 exact, no mismatches);
+2. **derives** the Hi-Lo index for every borderline hard hand by scanning the
+   true count and diffs the result against `ILLUSTRIOUS_18` (all 15 confirmed);
+3. lists derived hard deviations *outside* the Illustrious 18 (e.g. 8v6 double
+   at +1.6, 16v7 stand at +7.7) — confirming the I18 is a sensible curated
+   subset rather than the complete set.
+
+It exits non-zero on any disagreement beyond a small EV tie-tolerance. Scope is
+hard totals (soft hands and pairs need the EV-calculator extensions noted above).
+
 > Note: the committed `results/sweep.json` / `betspread_*.json` were generated
 > before that fix; the effect on the counter's overall EV is negligible (these
 > two deviations fire only at rare deeply-negative counts), but regenerate with

@@ -52,6 +52,9 @@ into a self-contained `dashboard.html`.**
   EV calculator and the generator for the dashboard's strategy-deviation panel;
   self-validates EV crossovers against the engine indices (see
   `docs/strategy_deviations.md`).
+- `validate_strategy.py` — offline cross-check (`make validate`) that proves the
+  hardcoded `BASIC_HARD` chart and `ILLUSTRIOUS_18` indices are EV-optimal
+  (hard totals); guarded in CI by `tests/test_strategy_validation.py`.
 - `visualize.py` — builds `dashboard.html` (sweep data + any `betspread_*.json`
   + `strategy_ev.json` inlined at `/*__…__*/` markers) and optional PNGs.
 - `_run_chunk.py` — internal helper to compute a slice of the sweep resumably.
@@ -61,9 +64,10 @@ into a self-contained `dashboard.html`.**
 ## Development
 
 ```bash
-make dev      # pip install -r requirements-dev.txt  (pytest, ruff, matplotlib)
-make test     # pytest  (fast: small fixed-seed sims + unit tests, ~15s)
-make lint     # ruff check .
+make dev       # pip install -r requirements-dev.txt  (pytest, ruff, matplotlib)
+make test      # pytest  (fast: small fixed-seed sims + unit tests, ~15s)
+make lint      # ruff check .
+make validate  # cross-check the strategy tables against the EV calculator
 ```
 
 Tests live in `tests/`: `test_engine_units.py` (cards/rules/shoe/sidebets,

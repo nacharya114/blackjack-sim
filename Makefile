@@ -1,6 +1,6 @@
 # Convenience targets. The engine needs no dependencies; `make dev` adds the
 # test/lint/PNG tooling.
-.PHONY: help dev test lint sweep dashboard betspread strategy clean
+.PHONY: help dev test lint validate sweep dashboard betspread strategy clean
 
 ROUNDS ?= 10000000
 CORES  ?= 0
@@ -18,6 +18,10 @@ test:       ## run the test suite
 
 lint:       ## static lint (ruff)
 	ruff check .
+
+validate:   ## cross-check the strategy tables against the analytic EV calculator
+	python validate_strategy.py
+	python validate_strategy.py --h17
 
 sweep:      ## run the full comparison matrix -> results/sweep.json
 	python run_sim.py sweep --rounds $(ROUNDS) --cores $(CORES) --seed $(SEED)
