@@ -132,6 +132,56 @@
   .evbar-zero{position:absolute; top:0; bottom:0; width:1px; background:var(--muted); opacity:.7}
   .evbar-val{flex:0 0 96px; text-align:right}
   .seg.on-soft{cursor:default}
+
+  /* top-level tabs */
+  .tabs{display:flex; gap:6px; border-bottom:1px solid var(--line); margin-bottom:26px}
+  .tab{background:transparent; color:var(--muted); border:1px solid var(--line); border-bottom:0;
+    border-radius:10px 10px 0 0; padding:11px 20px; font-family:var(--serif); font-size:15px; font-weight:600;
+    cursor:pointer; position:relative; top:1px}
+  .tab:hover{color:var(--cream)}
+  .tab.on{background:linear-gradient(180deg,var(--panel-2),var(--panel)); color:var(--brass-2);
+    border-color:var(--line); box-shadow:0 -2px 10px rgba(0,0,0,.18)}
+  .tab .tag{font-family:var(--mono); font-size:9px; letter-spacing:.1em; color:var(--brass);
+    border:1px solid var(--line); border-radius:99px; padding:1px 7px; text-transform:uppercase; margin-left:8px}
+  .tabpane[hidden]{display:none}
+
+  /* practice table */
+  .pg-rules{display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; margin:0 0 16px 0;
+    padding-bottom:16px; border-bottom:1px solid var(--line)}
+  .pg-rules .ctl label{font-size:9.5px}
+  .pg-rules select{min-width:0; padding:6px 8px; font-size:12px}
+  .pg-rules select:disabled{opacity:.45; cursor:not-allowed}
+  .pg-deck{margin:0 0 14px}
+  .pg-deckbar{position:relative; height:16px; background:rgba(0,0,0,.28); border:1px solid var(--line);
+    border-radius:6px; overflow:hidden}
+  .pg-deckfill{position:absolute; left:0; top:0; bottom:0;
+    background:linear-gradient(90deg,var(--brass),var(--brass-2)); border-radius:5px 0 0 5px; transition:width .25s}
+  .pg-cut{position:absolute; top:-3px; bottom:-3px; width:2px; background:var(--bad); box-shadow:0 0 4px var(--bad)}
+  .pg-decklab{font-family:var(--mono); font-size:11px; color:var(--muted); margin-top:5px}
+  .pg-count{display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap}
+  .pg-felt{min-height:150px; background:rgba(0,0,0,.16); border:1px solid var(--line);
+    border-radius:12px; padding:16px; margin-bottom:14px}
+  .pg-empty{color:var(--muted); font-family:var(--mono); font-size:13px; text-align:center; padding:38px 0}
+  .pg-seat{margin:4px 0 14px}
+  .pg-seats{display:flex; gap:22px; flex-wrap:wrap}
+  .pg-seat.active{outline:2px solid var(--brass); outline-offset:6px; border-radius:8px}
+  .pg-seat-lab{font-family:var(--mono); font-size:12px; color:var(--muted); margin-bottom:6px}
+  .pg-tot{color:var(--cream); font-weight:600}
+  .pg-bet-lab{font-family:var(--mono); font-size:11px; color:var(--brass-2); margin-top:5px}
+  .pg-res{font-weight:600; margin-left:6px}
+  .pg-hand{display:flex; gap:6px}
+  .pg-cd{width:46px; height:64px; background:#f6f1e3; border-radius:6px; border:1px solid #cbb78a;
+    display:flex; flex-direction:column; justify-content:space-between; padding:5px 6px; color:#1a1205;
+    font-family:var(--serif); box-shadow:0 2px 6px rgba(0,0,0,.35)}
+  .pg-cd.red{color:#b3242a}
+  .pg-cd .r{font-size:16px; font-weight:700; line-height:1}
+  .pg-cd .su{font-size:18px; text-align:right; line-height:1}
+  .pg-cd.back{background:repeating-linear-gradient(45deg,#13402f,#13402f 5px,#0c3024 5px,#0c3024 10px);
+    border-color:#0a2a20}
+  .pg-actions{display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-bottom:10px}
+  .pg-msg{font-family:var(--mono); font-size:13px; min-height:20px; margin-bottom:4px}
+  .pg-score{margin-top:8px; max-width:480px}
+  .pg-mv:disabled{opacity:.35; cursor:default}
 </style>
 </head>
 <body>
@@ -145,6 +195,72 @@
     <div class="meta" id="meta"></div>
   </header>
 
+  <nav class="tabs">
+    <button class="tab on" id="tab-btn-play">&#9824;&#9829; Play <span class="tag">practice</span></button>
+    <button class="tab" id="tab-btn-analysis">Analysis <span class="tag">EV &amp; house edge</span></button>
+  </nav>
+
+  <section id="tab-play" class="tabpane">
+    <div class="card full" id="pg-card">
+      <h2>Practice table <span class="tag">play a shoe</span>
+        <span style="margin-left:auto; display:flex; gap:8px; align-items:center">
+          <button class="seg" id="pg-peek">Peek count</button>
+          <button class="seg" id="pg-newshoe">New shoe</button>
+        </span>
+      </h2>
+      <div class="pg-rules" id="pg-rules">
+        <span class="ctl"><label>Decks</label>
+          <select id="pg-r-decks">
+            <option value="1">1</option><option value="2">2</option><option value="4">4</option>
+            <option value="6" selected>6</option><option value="8">8</option>
+          </select></span>
+        <span class="ctl"><label>Dealer soft 17</label>
+          <select id="pg-r-h17">
+            <option value="0" selected>Stands (S17)</option><option value="1">Hits (H17)</option>
+          </select></span>
+        <span class="ctl"><label>Surrender</label>
+          <select id="pg-r-ls">
+            <option value="1" selected>Late surrender</option><option value="0">None</option>
+          </select></span>
+        <span class="ctl"><label>After split</label>
+          <select id="pg-r-das">
+            <option value="1" selected>Double allowed</option><option value="0">No double</option>
+          </select></span>
+        <span class="ctl"><label>Blackjack pays</label>
+          <select id="pg-r-bj">
+            <option value="1.5" selected>3:2</option><option value="1.2">6:5</option>
+          </select></span>
+        <span class="ctl"><label>Penetration</label>
+          <select id="pg-r-pen">
+            <option value="0.5">50%</option><option value="0.67">67%</option>
+            <option value="0.75" selected>75%</option><option value="0.83">83%</option>
+          </select></span>
+      </div>
+      <div class="pg-deck" id="pg-deck"></div>
+      <div id="pg-count" class="pg-count" style="display:none"></div>
+      <div class="pg-felt" id="pg-felt"></div>
+      <div class="pg-actions" id="pg-actions">
+        <span class="ctl"><label>Bet (units)</label>
+          <input id="pg-bet" type="number" min="1" step="1" value="1"></span>
+        <button class="act" id="pg-deal">Deal</button>
+        <button class="seg pg-mv" data-a="H">Hit</button>
+        <button class="seg pg-mv" data-a="S">Stand</button>
+        <button class="seg pg-mv" data-a="D">Double</button>
+        <button class="seg pg-mv" data-a="P">Split</button>
+        <button class="seg pg-mv" data-a="R">Surrender</button>
+        <span id="pg-ins" style="display:none; align-self:center; font-family:var(--mono); font-size:13px">
+          Insurance? <button class="seg" id="pg-ins-y">Yes</button>
+          <button class="seg" id="pg-ins-n">No</button>
+        </span>
+      </div>
+      <div id="pg-msg" class="pg-msg"></div>
+      <div id="pg-coach" class="note" style="margin-top:0"></div>
+      <div id="pg-score" class="pg-score"></div>
+      <div class="note" id="pg-note"></div>
+    </div>
+  </section>
+
+  <section id="tab-analysis" class="tabpane" hidden>
   <div class="controls">
     <div class="ctl"><label>$ per unit (base bet)</label><input id="dpu" type="number" min="1" step="1" value="25"></div>
     <div class="ctl"><label>Hands / hour (session)</label><input id="hph" type="number" min="10" step="10" value="100"></div>
@@ -284,6 +400,7 @@
         total (the split action's EV is not modelled yet). See <span class="chip">docs/strategy_deviations.md</span>.</div>
     </div>
   </div>
+  </section>
 </div>
 
 <script>
@@ -825,12 +942,398 @@ $("chart-grids")?.addEventListener("click", e=>{
   renderChart();
 });
 
+// ====================================================================
+//  Practice table  --  a full client-side blackjack game (the Play tab)
+// ====================================================================
+const PG_RULES={decks:6, pen:0.75, h17:false, das:true, ls:true, bjPay:1.5, maxSplit:4};
+const PG_SUIT=["♠","♥","♦","♣"];      // spade heart diamond club
+const PG_ACT_NAME={H:"Hit", S:"Stand", D:"Double", P:"Split", R:"Surrender"};
+let PG=null;
+
+const pgCardVal = r => r===14 ? 11 : (r>=10 ? 10 : r);
+const pgHiLo    = r => (r>=2&&r<=6) ? 1 : (r>=10 ? -1 : 0);   // 10..A = -1, 7-9 = 0
+function pgRankStr(r){ return r===14?"A":r===13?"K":r===12?"Q":r===11?"J":r===10?"10":String(r); }
+function pgHandVal(cards){
+  let t=0, a=0;
+  for(const c of cards){ t+=pgCardVal(c.r); if(c.r===14) a++; }
+  while(t>21 && a>0){ t-=10; a--; }
+  return {total:t, soft:a>0};
+}
+function pgIsBJ(cards){ return cards.length===2 && pgHandVal(cards).total===21; }
+
+function pgInit(){
+  PG={shoe:[], pos:0, cut:0, rc:0, shoeDone:false, peek:false,
+      state:"betting", dealer:[], hands:[], active:0, holeShown:false,
+      bet:1, insurance:0, lastRoundNet:null, coachMsg:"", coachBad:false,
+      stats:{shoes:0, hands:0, decisions:0, mistakes:0, wagered:0, action:0, net:0, evlost:0}};
+  pgNewShoe();
+}
+function pgNewShoe(){
+  const cards=[];
+  for(let d=0; d<PG_RULES.decks; d++)
+    for(let s=0; s<4; s++)
+      for(let r=2; r<=14; r++) cards.push({r, s});
+  for(let i=cards.length-1; i>0; i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [cards[i], cards[j]]=[cards[j], cards[i]];
+  }
+  PG.shoe=cards; PG.pos=0; PG.rc=0;
+  PG.cut=Math.floor(cards.length*PG_RULES.pen);   // cards dealt before cut card
+  PG.shoeDone=false; PG.state="betting"; PG.dealer=[]; PG.hands=[];
+  PG.lastRoundNet=null; PG.coachMsg=""; PG.stats.shoes++;
+}
+function pgReadRules(){                            // pull the table rules from the controls
+  PG_RULES.decks = +$("pg-r-decks").value;
+  PG_RULES.h17   = $("pg-r-h17").value==="1";
+  PG_RULES.ls    = $("pg-r-ls").value==="1";
+  PG_RULES.das   = $("pg-r-das").value==="1";
+  PG_RULES.bjPay = +$("pg-r-bj").value;
+  PG_RULES.pen   = +$("pg-r-pen").value;
+}
+function pgApplyRules(){                           // a rule changed -> fresh shoe + fresh session
+  pgReadRules();
+  PG.stats={shoes:0, hands:0, decisions:0, mistakes:0, wagered:0, action:0, net:0, evlost:0};
+  PG.coachMsg=""; PG.coachBad=false; PG.lastRoundNet=null;
+  pgNewShoe();
+  pgRender();
+}
+function pgDraw(count){ const c=PG.shoe[PG.pos++]; if(count) PG.rc+=pgHiLo(c.r); return c; }
+function pgDecksLeft(){ return (PG.shoe.length-PG.pos)/52; }
+function pgTrueCount(){ const d=pgDecksLeft(); return d>0 ? PG.rc/d : 0; }
+function pgRevealHole(){ if(!PG.holeShown){ PG.holeShown=true; PG.rc+=pgHiLo(PG.dealer[1].r); } }
+function pgActiveHand(){ return PG.hands[PG.active]; }
+const pgCanDouble    = h => h.cards.length===2 && !h.done && (PG_RULES.das || !h.split);
+const pgCanSplit     = h => h.cards.length===2 && pgCardVal(h.cards[0].r)===pgCardVal(h.cards[1].r)
+                            && PG.hands.length<PG_RULES.maxSplit;
+const pgCanSurrender = h => PG_RULES.ls && h.cards.length===2 && PG.hands.length===1 && !h.split;
+
+function pgDeal(){
+  if(PG.state!=="betting" || PG.shoeDone) return;
+  const bet=Math.max(1, Math.round(+$("pg-bet").value)||1);
+  PG.bet=bet; PG.dealer=[]; PG.insurance=0; PG.holeShown=false;
+  PG.coachMsg=""; PG.coachBad=false;
+  const p=[pgDraw(true)];                 // player 1
+  const up=pgDraw(true);                  // dealer up
+  p.push(pgDraw(true));                    // player 2
+  const hole=pgDraw(false);               // dealer hole (not counted yet)
+  PG.dealer=[up, hole];
+  PG.hands=[{cards:p, bet:bet, done:false, doubled:false, surr:false, split:false,
+             blackjack:pgIsBJ(p)}];
+  PG.active=0;
+  PG.stats.hands++; PG.stats.wagered+=bet; PG.stats.action+=bet;
+  if(up.r===14){ PG.state="insurance"; pgRender(); return; }   // offer insurance
+  pgAfterInsurance();
+}
+function pgInsurance(take){
+  if(PG.state!=="insurance") return;
+  const tc=pgTrueCount();
+  const idx=(STRATEGY_CHART_DATA && STRATEGY_CHART_DATA.insurance_index!=null)
+            ? STRATEGY_CHART_DATA.insurance_index : 3;
+  const want=tc>=idx;
+  if(STRATEGY_CHART_DATA){
+    PG.stats.decisions++;
+    if(take!==want){ PG.stats.mistakes++; PG.coachBad=true;
+      PG.coachMsg=`✗ Insurance: ${want?"take":"decline"} (TC ${tc>=0?"+":""}${tc.toFixed(1)}, index +${idx})`; }
+    else { PG.coachBad=false;
+      PG.coachMsg=`✓ ${take?"Took":"Declined"} insurance — correct at TC ${tc>=0?"+":""}${tc.toFixed(1)}`; }
+  }
+  if(take){ PG.insurance=PG.bet/2; PG.stats.action+=PG.insurance; }
+  pgAfterInsurance();
+}
+function pgAfterInsurance(){
+  if(pgIsBJ(PG.dealer) || PG.hands[0].blackjack){   // a natural ends the round at once
+    PG.state="done"; pgResolve(); return;
+  }
+  PG.state="player"; pgRender();
+}
+
+function pgAct(a){
+  if(PG.state!=="player") return;
+  const h=pgActiveHand();
+  pgCoach(h, a);
+  if(a==="H"){
+    h.cards.push(pgDraw(true));
+    if(pgHandVal(h.cards).total>=21){ h.done=true; pgAdvance(); }
+  } else if(a==="S"){
+    h.done=true; pgAdvance();
+  } else if(a==="D"){
+    if(!pgCanDouble(h)) return;
+    PG.stats.action+=h.bet; h.bet*=2; h.doubled=true;
+    h.cards.push(pgDraw(true)); h.done=true; pgAdvance();
+  } else if(a==="P"){
+    if(!pgCanSplit(h)) return;
+    pgSplit();
+    if(pgActiveHand().done) pgAdvance();
+  } else if(a==="R"){
+    if(!pgCanSurrender(h)) return;
+    h.surr=true; h.done=true; pgAdvance();
+  }
+  pgRender();
+}
+function pgSplit(){
+  const h=pgActiveHand();
+  const isAces=h.cards[0].r===14;
+  const moved=h.cards.pop();
+  const nb=PG.bet;
+  PG.stats.action+=nb;
+  h.split=true;
+  const nh={cards:[moved], bet:nb, done:false, doubled:false, surr:false, split:true};
+  h.cards.push(pgDraw(true));
+  nh.cards.push(pgDraw(true));
+  PG.hands.splice(PG.active+1, 0, nh);
+  if(isAces){ h.done=true; nh.done=true; }   // split aces: one card each, no resplit
+}
+function pgAdvance(){
+  while(PG.active<PG.hands.length && PG.hands[PG.active].done) PG.active++;
+  if(PG.active>=PG.hands.length) pgDealerPlay();
+}
+function pgDealerPlay(){
+  PG.state="dealer"; pgRevealHole();
+  const live=PG.hands.some(h => !h.surr && pgHandVal(h.cards).total<=21);
+  if(live){
+    let v=pgHandVal(PG.dealer);
+    while(v.total<17 || (v.total===17 && v.soft && PG_RULES.h17)){
+      PG.dealer.push(pgDraw(true)); v=pgHandVal(PG.dealer);
+    }
+  }
+  PG.state="done"; pgResolve();
+}
+function pgResolve(){
+  pgRevealHole();
+  const dv=pgHandVal(PG.dealer), dBJ=pgIsBJ(PG.dealer);
+  let net=0;
+  if(PG.insurance>0) net += dBJ ? PG.insurance*2 : -PG.insurance;
+  for(const h of PG.hands){
+    if(h.surr){ net-=h.bet/2; continue; }
+    const pv=pgHandVal(h.cards);
+    if(h.blackjack && !dBJ){ net += h.bet*PG_RULES.bjPay; continue; }
+    if(h.blackjack && dBJ) continue;        // push
+    if(dBJ){ net-=h.bet; continue; }
+    if(pv.total>21){ net-=h.bet; continue; }
+    if(dv.total>21){ net+=h.bet; continue; }
+    if(pv.total>dv.total) net+=h.bet;
+    else if(pv.total<dv.total) net-=h.bet;
+  }
+  PG.stats.net+=net; PG.lastRoundNet=net;
+  if(PG.pos>=PG.cut){ PG.shoeDone=true; PG.state="shoe_done"; }
+  else PG.state="betting";
+  pgRender();
+}
+
+// ---- basic-strategy coach (uses the inlined strategy chart) ----
+function pgRecommend(h){
+  const D=STRATEGY_CHART_DATA; if(!D || !D.sections) return null;
+  const up=PG.dealer[0].r, upv=up===14?11:(up>=10?10:up);
+  const ui=D.upcards.indexOf(upv); if(ui<0) return null;
+  const v=pgHandVal(h.cards);
+  let secName, label;
+  if(h.cards.length===2 && pgCardVal(h.cards[0].r)===pgCardVal(h.cards[1].r)){
+    const pr=pgCardVal(h.cards[0].r);
+    secName="Pairs"; label = pr===11?"A,A" : pr===10?"T,T" : pr+","+pr;
+  } else if(v.soft){
+    secName="Soft totals"; label="A,"+(v.total-11);
+  } else {
+    secName="Hard totals"; label=String(Math.max(8, Math.min(17, v.total)));
+  }
+  const sec=D.sections.find(s=>s.name===secName); if(!sec) return null;
+  const row=sec.rows.find(r=>r.label===label); if(!row) return null;
+  const ti=D.tc_grid.indexOf(0);                // coach against flat basic strategy
+  return {cell:row.cells[ui], ti};
+}
+function pgCoach(h, a){
+  const rec=pgRecommend(h); if(!rec) return;
+  PG.stats.decisions++;
+  let want=rec.cell.basic;                       // S/H/D/V/P/R
+  if(want==="V") want = pgCanDouble(h) ? "D" : "S";
+  else if(want==="D") want = pgCanDouble(h) ? "D" : "H";
+  else if(want==="P" && !pgCanSplit(h)) want="H";
+  else if(want==="R" && !pgCanSurrender(h)) want="H";
+  if(a===want){
+    PG.coachBad=false; PG.coachMsg=`✓ ${PG_ACT_NAME[a]} — matches basic strategy`;
+    return;
+  }
+  PG.stats.mistakes++; PG.coachBad=true;
+  const cost=pgEvCost(rec.cell, rec.ti, a);
+  PG.stats.evlost += cost*h.bet;
+  PG.coachMsg=`✗ Basic play is ${PG_ACT_NAME[want]} (you chose ${PG_ACT_NAME[a]})`
+            + (cost>0 ? ` · ~−${cost.toFixed(3)} EV/unit` : "");
+}
+function pgEvCost(cell, i, a){                    // EV given up vs the best modelled action
+  const ev={S:cell.ev.stand[i], H:cell.ev.hit[i], D:cell.ev.double[i], V:cell.ev.double[i], R:-0.5};
+  const chosen=ev[a]; if(chosen==null) return 0;  // split (P) EV not modelled
+  const best=Math.max(...["S","H","D","R"].map(k=>ev[k]).filter(x=>x!=null));
+  return Math.max(0, best-chosen);
+}
+
+// ---- rendering ----
+function pgCardHTML(c, down){
+  if(down) return `<div class="pg-cd back"></div>`;
+  const red=(c.s===1||c.s===2);
+  return `<div class="pg-cd${red?" red":""}"><span class="r">${pgRankStr(c.r)}</span>`
+       + `<span class="su">${PG_SUIT[c.s]}</span></div>`;
+}
+const pgHandHTML = (cards, hideHole) => cards.map((c,i)=>pgCardHTML(c, hideHole&&i===1)).join("");
+function pgHandResult(h){
+  const dv=pgHandVal(PG.dealer), dBJ=pgIsBJ(PG.dealer), pv=pgHandVal(h.cards);
+  let r, cl="";
+  const u=n => (Number.isInteger(n)?n:n.toFixed(1))+"u";
+  if(h.surr){ r="surrender −"+u(h.bet/2); cl="neg"; }
+  else if(h.blackjack && !dBJ){ r="blackjack +"+u(h.bet*PG_RULES.bjPay); cl="pos"; }
+  else if(h.blackjack && dBJ){ r="push"; }
+  else if(dBJ){ r="dealer BJ −"+u(h.bet); cl="neg"; }
+  else if(pv.total>21){ r="bust −"+u(h.bet); cl="neg"; }
+  else if(dv.total>21){ r="win +"+u(h.bet); cl="pos"; }
+  else if(pv.total>dv.total){ r="win +"+u(h.bet); cl="pos"; }
+  else if(pv.total<dv.total){ r="lose −"+u(h.bet); cl="neg"; }
+  else { r="push"; }
+  return `<span class="pg-res ${cl}">${r}</span>`;
+}
+function pgRender(){
+  if(!PG) return;
+  // deck visualizer
+  const rem=PG.shoe.length-PG.pos, frac=rem/PG.shoe.length;
+  const cutFrac=(PG.shoe.length-PG.cut)/PG.shoe.length;
+  $("pg-deck").innerHTML=
+    `<div class="pg-deckbar"><div class="pg-deckfill" style="width:${(frac*100).toFixed(1)}%"></div>`
+    + `<div class="pg-cut" style="left:${(cutFrac*100).toFixed(1)}%" title="cut card"></div></div>`
+    + `<div class="pg-decklab">${pgDecksLeft().toFixed(1)} of ${PG_RULES.decks} decks left`
+    + `${PG.pos>=PG.cut?" · cut card reached":""}</div>`;
+  // count peek
+  const cp=$("pg-count");
+  if(PG.peek){
+    cp.style.display=""; const tc=pgTrueCount();
+    cp.innerHTML=`<span class="chip">Running ${PG.rc>=0?"+":""}${PG.rc}</span>`
+      + `<span class="chip">True ${tc>=0?"+":""}${tc.toFixed(1)}</span>`
+      + `<span class="chip">${pgDecksLeft().toFixed(1)} decks</span>`;
+  } else cp.style.display="none";
+  // felt
+  let felt="";
+  if(PG.dealer.length){
+    const hide=!PG.holeShown;
+    const dv=hide ? pgCardVal(PG.dealer[0].r) : pgHandVal(PG.dealer).total;
+    felt+=`<div class="pg-seat"><div class="pg-seat-lab">Dealer `
+        + `<span class="pg-tot">${dv}${hide?" +":""}</span></div>`
+        + `<div class="pg-hand">${pgHandHTML(PG.dealer, hide)}</div></div>`;
+  }
+  if(PG.hands.length){
+    felt+=`<div class="pg-seats">`;
+    PG.hands.forEach((h,i)=>{
+      const v=pgHandVal(h.cards);
+      const act=(PG.state==="player" && i===PG.active);
+      const res=(PG.state==="done"||PG.state==="shoe_done") ? pgHandResult(h) : "";
+      felt+=`<div class="pg-seat${act?" active":""}">`
+        + `<div class="pg-seat-lab">${PG.hands.length>1?"Hand "+(i+1):"You"} `
+        + `<span class="pg-tot">${v.total}${v.soft&&v.total<21?" soft":""}</span>`
+        + `${h.doubled?' <span class="chip">2&times;</span>':""}${res}</div>`
+        + `<div class="pg-hand">${pgHandHTML(h.cards, false)}</div>`
+        + `<div class="pg-bet-lab">${h.bet} u</div></div>`;
+    });
+    felt+=`</div>`;
+  }
+  if(!PG.dealer.length && !PG.hands.length)
+    felt=`<div class="pg-empty">Place a bet and hit <b>Deal</b> to start the shoe.</div>`;
+  $("pg-felt").innerHTML=felt;
+  // controls
+  const inRound=PG.state==="player";
+  $("pg-deal").style.display=(PG.state==="betting") ? "" : "none";
+  $("pg-bet").disabled=(PG.state!=="betting");
+  document.querySelectorAll("#pg-actions .pg-mv").forEach(b=>{
+    const a=b.dataset.a; let on=false;
+    if(inRound){
+      const h=pgActiveHand();
+      on = (a==="H"||a==="S") ? true
+         : a==="D" ? pgCanDouble(h)
+         : a==="P" ? pgCanSplit(h)
+         : a==="R" ? pgCanSurrender(h) : false;
+    }
+    let vis=inRound;
+    if(a==="R" && !PG_RULES.ls) vis=false;          // surrender removed from this ruleset
+    b.style.display=vis ? "" : "none"; b.disabled=!on;
+  });
+  $("pg-ins").style.display=(PG.state==="insurance") ? "" : "none";
+  $("pg-newshoe").disabled=(PG.state!=="betting" && PG.state!=="shoe_done");
+  // rule controls are only editable between hands (changing them reshuffles the shoe)
+  const ruleEditable=(PG.state==="betting" || PG.state==="shoe_done");
+  document.querySelectorAll("#pg-rules select").forEach(s=> s.disabled=!ruleEditable);
+  // message
+  let msg="";
+  if(PG.state==="insurance") msg="Dealer shows an Ace — insurance pays 2:1 (costs half your bet).";
+  else if(PG.state==="shoe_done") msg="<b>Shoe complete.</b> The cut card was reached — start a new shoe.";
+  else if(PG.state==="betting" && PG.lastRoundNet!=null){
+    const n=PG.lastRoundNet;
+    msg=`Last round: <b class="${cls(n)}">${n>=0?"+":""}${Number.isInteger(n)?n:n.toFixed(1)} u</b>. Deal again.`;
+  }
+  $("pg-msg").innerHTML=msg;
+  $("pg-coach").innerHTML=(STRATEGY_CHART_DATA && PG.coachMsg)
+    ? `<span class="${PG.coachBad?"neg":"pos"}">${PG.coachMsg}</span>` : "";
+  // scoreboard
+  const s=PG.stats;
+  const reEdge=s.wagered>0 ? -s.net/s.wagered : 0;
+  const eor=s.action>0 ? -s.net/s.action : 0;
+  const fU=n => (Number.isInteger(n)?n:(+n.toFixed(2)));
+  let sc=`<div class="stat"><span class="k">Hands played</span><span class="v">${s.hands}</span></div>`
+    + `<div class="stat"><span class="k">Total wagered (original)</span><span class="v">${fU(s.wagered)} u</span></div>`
+    + `<div class="stat"><span class="k">Net result</span>`
+    + `<span class="v ${cls(s.net)}">${s.net>=0?"+":""}${fU(s.net)} u</span></div>`
+    + `<div class="stat"><span class="k">Realized house edge</span>`
+    + `<span class="v ${reEdge>0?"neg":(reEdge<0?"pos":"")}">${reEdge*100>=0?"+":""}${(reEdge*100).toFixed(2)}%</span></div>`
+    + `<div class="stat"><span class="k">Element of risk (per unit at risk)</span>`
+    + `<span class="v ${eor>0?"neg":(eor<0?"pos":"")}">${eor*100>=0?"+":""}${(eor*100).toFixed(2)}%</span></div>`;
+  if(STRATEGY_CHART_DATA)
+    sc+=`<div class="stat"><span class="k">Basic-strategy mistakes</span>`
+      + `<span class="v ${s.mistakes?"neg":"pos"}">${s.mistakes} / ${s.decisions}`
+      + `${s.evlost>0?` · −${(+s.evlost.toFixed(2))} u EV`:""}</span></div>`;
+  $("pg-score").innerHTML=sc;
+  // dynamic rules note (+ honest coach caveat when the table diverges from the chart)
+  const R=PG_RULES;
+  const bj = R.bjPay===1.5?"3:2" : R.bjPay===1.2?"6:5" : R.bjPay+"×";
+  let note=`<b>${R.decks}-deck shoe &middot; ${R.h17?"H17":"S17"} &middot; ${R.das?"DAS":"no DAS"} &middot; `
+    + `${R.ls?"late surrender":"no surrender"} &middot; BJ ${bj}.</b> `
+    + `Realized house edge = &minus;net &divide; total original wager (positive = the house is ahead). `
+    + `The bar shows approximate decks remaining; the red cut card ends the shoe. The Hi-Lo count stays hidden `
+    + `until you <b>Peek</b>. A richer 3-D shoe visualizer is on the roadmap.`;
+  const chartH17 = STRATEGY_CHART_DATA ? !!STRATEGY_CHART_DATA.h17 : false;
+  if(STRATEGY_CHART_DATA && (R.h17!==chartH17 || !R.das || R.decks<4))
+    note += ` <span class="sub">The basic-strategy coach follows the standard 6-deck S17/DAS chart, so a few `
+          + `of its hints can differ slightly under these rules.</span>`;
+  $("pg-note").innerHTML=note;
+}
+
+function setupPractice(){
+  pgReadRules();                                  // seed PG_RULES from the controls
+  pgInit();
+  $("pg-deal").onclick=pgDeal;
+  $("pg-newshoe").onclick=()=>{ pgNewShoe(); pgRender(); };
+  $("pg-peek").onclick=()=>{ PG.peek=!PG.peek; $("pg-peek").classList.toggle("on", PG.peek); pgRender(); };
+  document.querySelectorAll("#pg-actions .pg-mv").forEach(b=> b.onclick=()=>pgAct(b.dataset.a));
+  $("pg-ins-y").onclick=()=>pgInsurance(true);
+  $("pg-ins-n").onclick=()=>pgInsurance(false);
+  document.querySelectorAll("#pg-rules select").forEach(s=> s.onchange=pgApplyRules);
+  pgRender();
+}
+
+// ---- tab switching ----
+function setupTabs(){
+  const panes={play:"tab-play", analysis:"tab-analysis"};
+  function show(which){
+    for(const [k,id] of Object.entries(panes)){
+      $(id).hidden=(k!==which);
+      $("tab-btn-"+k).classList.toggle("on", k===which);
+    }
+  }
+  $("tab-btn-play").onclick=()=>show("play");
+  $("tab-btn-analysis").onclick=()=>show("analysis");
+  show("play");
+}
+
+setupTabs();
+setupPractice();
 setupBetspread();
 setupStrategy();
 setupStrategyChart();
 if(DATA && DATA.results){ selectRun(0); }
 else {
-  document.querySelector(".wrap").insertAdjacentHTML("beforeend",
+  $("tab-analysis").insertAdjacentHTML("beforeend",
     `<div class="card" style="margin-top:18px"><h2>No data loaded</h2>
      <div class="note">Run <span class="chip">python run_sim.py sweep</span> then
      <span class="chip">python visualize.py</span>, or load a <b>sweep.json</b> with the file picker above.</div></div>`);

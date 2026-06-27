@@ -85,7 +85,12 @@ into a self-contained `dashboard.html`.**
   (hard totals); guarded in CI by `tests/test_strategy_validation.py`.
 - `visualize.py` — builds `dashboard.html` (sweep data + any `betspread_*.json`
   + `strategy_ev.json` + `strategy_chart.json` inlined at `/*__…__*/` markers)
-  and optional PNGs. `make strategy` regenerates both strategy JSONs.
+  and optional PNGs. `make strategy` regenerates both strategy JSONs. The page has
+  two tabs: **Play** (a self-contained client-side practice blackjack table — full
+  6-deck shoe, count peek, realized-EV scoreboard, and a basic-strategy coach
+  driven by the inlined `strategy_chart.json`; all logic lives in
+  `dashboard_template.html`'s `pg*` JS, no Python involved) and **Analysis** (the
+  sweep table, charts, bet-spread/strategy/chart panels). Play is the default tab.
 - `_run_chunk.py` — internal helper to compute a slice of the sweep resumably.
 - `setup.py` — builds `blackjack._fastsim` via `cythonize` (`make build`); the
   generated `.c`/`.so` are git-ignored, only `_fastsim.pyx` is tracked.
