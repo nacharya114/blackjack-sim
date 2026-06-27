@@ -1,7 +1,7 @@
 {
-  "generated": "2026-06-26 22:00",
-  "rounds_each": 10000000,
-  "cores": 1,
+  "generated": "2026-06-26 22:55",
+  "rounds_each": 100000000,
+  "cores": 10,
   "dollars_per_unit": 10.0,
   "results": [
     {
@@ -27,33 +27,34 @@
       },
       "strategy": "basic",
       "strategy_kwargs": {},
-      "rounds": 10000000,
+      "engine": "c",
+      "rounds": 100000000,
       "dollars_per_unit": 10.0,
       "hands_per_hour": 100,
       "main": {
-        "ev_per_round_units": -0.0036477,
-        "house_edge": 0.0036477,
-        "element_of_risk": 0.0032231359609883646,
-        "std_per_round_units": 1.140351776569374,
-        "avg_wager_units": 1.1317239,
+        "ev_per_round_units": -0.003698225,
+        "house_edge": 0.003698225,
+        "element_of_risk": 0.0032673190393729956,
+        "std_per_round_units": 1.140843099925261,
+        "avg_wager_units": 1.13188365,
         "avg_initial_units": 1.0
       },
       "side_bets": {},
       "total": {
-        "ev_per_round_units": -0.0036477,
-        "house_edge": 0.0032231359609883646,
-        "std_per_round_units": 1.140351776569374
+        "ev_per_round_units": -0.003698225,
+        "house_edge": 0.0032673190393729956,
+        "std_per_round_units": 1.140843099925261
       },
       "hourly": {
-        "ev_units": -0.36477,
-        "ev_dollars": -3.6477,
-        "std_dollars": 114.0351776569374,
-        "ci95_round_units": 0.0007067973537646162,
-        "ci95_hour_dollars": 0.7067973537646162
+        "ev_units": -0.3698225,
+        "ev_dollars": -3.698225,
+        "std_dollars": 114.0843099925261,
+        "ci95_round_units": 0.00022360524758535116,
+        "ci95_hour_dollars": 0.22360524758535116
       },
       "label": "6D S17 DAS LS 3:2",
-      "wall_seconds": 115.2,
-      "cores": 1
+      "wall_seconds": 1.0,
+      "cores": 10
     },
     {
       "rules_name": "6D H17 DAS noLS 3:2",
@@ -78,33 +79,34 @@
       },
       "strategy": "basic",
       "strategy_kwargs": {},
-      "rounds": 10000000,
+      "engine": "c",
+      "rounds": 100000000,
       "dollars_per_unit": 10.0,
       "hands_per_hour": 100,
       "main": {
-        "ev_per_round_units": -0.00639855,
-        "house_edge": 0.00639855,
-        "element_of_risk": 0.005635714357434937,
-        "std_per_round_units": 1.1587689018231522,
-        "avg_wager_units": 1.1353574,
+        "ev_per_round_units": -0.006466125,
+        "house_edge": 0.006466125,
+        "element_of_risk": 0.005712862082742731,
+        "std_per_round_units": 1.1547182643663463,
+        "avg_wager_units": 1.13185386,
         "avg_initial_units": 1.0
       },
       "side_bets": {},
       "total": {
-        "ev_per_round_units": -0.00639855,
-        "house_edge": 0.005635714357434937,
-        "std_per_round_units": 1.1587689018231522
+        "ev_per_round_units": -0.006466125,
+        "house_edge": 0.005712862082742731,
+        "std_per_round_units": 1.1547182643663463
       },
       "hourly": {
-        "ev_units": -0.6398550000000001,
-        "ev_dollars": -6.39855,
-        "std_dollars": 115.87689018231522,
-        "ci95_round_units": 0.0007182124062605072,
-        "ci95_hour_dollars": 0.7182124062605072
+        "ev_units": -0.6466124999999999,
+        "ev_dollars": -6.466124999999999,
+        "std_dollars": 115.47182643663463,
+        "ci95_round_units": 0.00022632477981580386,
+        "ci95_hour_dollars": 0.22632477981580384
       },
       "label": "6D H17 DAS noLS 3:2",
-      "wall_seconds": 110.3,
-      "cores": 1
+      "wall_seconds": 0.9,
+      "cores": 10
     },
     {
       "rules_name": "2D H17 DAS noLS 3:2",
@@ -129,33 +131,34 @@
       },
       "strategy": "basic",
       "strategy_kwargs": {},
-      "rounds": 10000000,
+      "engine": "c",
+      "rounds": 100000000,
       "dollars_per_unit": 10.0,
       "hands_per_hour": 100,
       "main": {
-        "ev_per_round_units": -0.00438835,
-        "house_edge": 0.00438835,
-        "element_of_risk": 0.003877666036228014,
-        "std_per_round_units": 1.1550855599506655,
-        "avg_wager_units": 1.1316988,
+        "ev_per_round_units": -0.00461953,
+        "house_edge": 0.00461953,
+        "element_of_risk": 0.004094222211224405,
+        "std_per_round_units": 1.1508708629501472,
+        "avg_wager_units": 1.12830466,
         "avg_initial_units": 1.0
       },
       "side_bets": {},
       "total": {
-        "ev_per_round_units": -0.00438835,
-        "house_edge": 0.003877666036228014,
-        "std_per_round_units": 1.1550855599506655
+        "ev_per_round_units": -0.00461953,
+        "house_edge": 0.004094222211224405,
+        "std_per_round_units": 1.1508708629501472
       },
       "hourly": {
-        "ev_units": -0.43883500000000003,
-        "ev_dollars": -4.38835,
-        "std_dollars": 115.50855599506654,
-        "ci95_round_units": 0.0007159294473157542,
-        "ci95_hour_dollars": 0.7159294473157541
+        "ev_units": -0.461953,
+        "ev_dollars": -4.61953,
+        "std_dollars": 115.08708629501471,
+        "ci95_round_units": 0.00022557068913822885,
+        "ci95_hour_dollars": 0.22557068913822886
       },
       "label": "2D H17 DAS 3:2",
-      "wall_seconds": 110.8,
-      "cores": 1
+      "wall_seconds": 0.9,
+      "cores": 10
     },
     {
       "rules_name": "1D S17 noDAS noLS 3:2",
@@ -180,33 +183,34 @@
       },
       "strategy": "basic",
       "strategy_kwargs": {},
-      "rounds": 10000000,
+      "engine": "c",
+      "rounds": 100000000,
       "dollars_per_unit": 10.0,
       "hands_per_hour": 100,
       "main": {
-        "ev_per_round_units": -0.0015377,
-        "house_edge": 0.0015377,
-        "element_of_risk": 0.0013800507325927112,
-        "std_per_round_units": 1.1306407755399441,
-        "avg_wager_units": 1.1142344,
+        "ev_per_round_units": -0.0013534,
+        "house_edge": 0.0013534,
+        "element_of_risk": 0.0012146473365603786,
+        "std_per_round_units": 1.130696942639006,
+        "avg_wager_units": 1.11423288,
         "avg_initial_units": 1.0
       },
       "side_bets": {},
       "total": {
-        "ev_per_round_units": -0.0015377,
-        "house_edge": 0.0013800507325927112,
-        "std_per_round_units": 1.1306407755399441
+        "ev_per_round_units": -0.0013534,
+        "house_edge": 0.0012146473365603786,
+        "std_per_round_units": 1.130696942639006
       },
       "hourly": {
-        "ev_units": -0.15377,
-        "ev_dollars": -1.5376999999999998,
-        "std_dollars": 113.06407755399441,
-        "ci95_round_units": 0.0007007784129684216,
-        "ci95_hour_dollars": 0.7007784129684216
+        "ev_units": -0.13534000000000002,
+        "ev_dollars": -1.3534000000000002,
+        "std_dollars": 113.06969426390062,
+        "ci95_round_units": 0.0002216166007572452,
+        "ci95_hour_dollars": 0.2216166007572452
       },
       "label": "1D S17 noDAS 3:2",
-      "wall_seconds": 113.4,
-      "cores": 1
+      "wall_seconds": 0.9,
+      "cores": 10
     },
     {
       "rules_name": "6D H17 noDAS noLS 6:5",
@@ -231,33 +235,34 @@
       },
       "strategy": "basic",
       "strategy_kwargs": {},
-      "rounds": 10000000,
+      "engine": "c",
+      "rounds": 100000000,
       "dollars_per_unit": 10.0,
       "hands_per_hour": 100,
       "main": {
-        "ev_per_round_units": -0.021396739999851516,
-        "house_edge": 0.021396739999851516,
-        "element_of_risk": 0.019048613592572396,
-        "std_per_round_units": 1.1227859981224153,
-        "avg_wager_units": 1.1232702,
+        "ev_per_round_units": -0.021479773999856122,
+        "house_edge": 0.021479773999856122,
+        "element_of_risk": 0.019181558062964916,
+        "std_per_round_units": 1.1185560392838076,
+        "avg_wager_units": 1.11981383,
         "avg_initial_units": 1.0
       },
       "side_bets": {},
       "total": {
-        "ev_per_round_units": -0.021396739999851516,
-        "house_edge": 0.019048613592572396,
-        "std_per_round_units": 1.1227859981224153
+        "ev_per_round_units": -0.021479773999856122,
+        "house_edge": 0.019181558062964916,
+        "std_per_round_units": 1.1185560392838076
       },
       "hourly": {
-        "ev_units": -2.1396739999851517,
-        "ev_dollars": -21.39673999985152,
-        "std_dollars": 112.27859981224154,
-        "ci95_round_units": 0.0006959099714864244,
-        "ci95_hour_dollars": 0.6959099714864243
+        "ev_units": -2.147977399985612,
+        "ev_dollars": -21.47977399985612,
+        "std_dollars": 111.85560392838077,
+        "ci95_round_units": 0.0002192369836996263,
+        "ci95_hour_dollars": 0.2192369836996263
       },
       "label": "6D H17 noDAS 6:5",
-      "wall_seconds": 110.0,
-      "cores": 1
+      "wall_seconds": 0.9,
+      "cores": 10
     },
     {
       "rules_name": "6D S17 DAS LS 3:2",
@@ -282,33 +287,34 @@
       },
       "strategy": "counter",
       "strategy_kwargs": {},
-      "rounds": 10000000,
+      "engine": "c",
+      "rounds": 100000000,
       "dollars_per_unit": 10.0,
       "hands_per_hour": 100,
       "main": {
-        "ev_per_round_units": 0.01923395,
-        "house_edge": -0.010605945476674358,
-        "element_of_risk": -0.009226287841357707,
-        "std_per_round_units": 3.4707083909123035,
-        "avg_wager_units": 2.08469,
-        "avg_initial_units": 1.8135064
+        "ev_per_round_units": 0.018789305,
+        "house_edge": -0.010348404223928739,
+        "element_of_risk": -0.00900350326859623,
+        "std_per_round_units": 3.4717169181898746,
+        "avg_wager_units": 2.08688823,
+        "avg_initial_units": 1.81567173
       },
       "side_bets": {},
       "total": {
-        "ev_per_round_units": 0.01923395,
-        "house_edge": -0.009226287841357707,
-        "std_per_round_units": 3.4707083909123035
+        "ev_per_round_units": 0.018789305,
+        "house_edge": -0.00900350326859623,
+        "std_per_round_units": 3.4717169181898746
       },
       "hourly": {
-        "ev_units": 1.923395,
-        "ev_dollars": 19.23395,
-        "std_dollars": 347.07083909123037,
-        "ci95_round_units": 0.00215116734747002,
-        "ci95_hour_dollars": 2.15116734747002
+        "ev_units": 1.8789304999999998,
+        "ev_dollars": 18.789305,
+        "std_dollars": 347.1716918189875,
+        "ci95_round_units": 0.0006804565159652154,
+        "ci95_hour_dollars": 0.6804565159652154
       },
       "label": "6D S17 DAS LS 3:2 (deep)",
-      "wall_seconds": 136.1,
-      "cores": 1
+      "wall_seconds": 1.1,
+      "cores": 10
     },
     {
       "rules_name": "6D S17 DAS LS 3:2",
@@ -338,39 +344,40 @@
         ],
         "side_bet_unit": 1.0
       },
-      "rounds": 10000000,
+      "engine": "c",
+      "rounds": 100000000,
       "dollars_per_unit": 10.0,
       "hands_per_hour": 100,
       "main": {
-        "ev_per_round_units": -0.0036477,
-        "house_edge": 0.0036477,
-        "element_of_risk": 0.0032231359609883646,
-        "std_per_round_units": 1.140351776569374,
-        "avg_wager_units": 1.1317239,
+        "ev_per_round_units": -0.003698225,
+        "house_edge": 0.003698225,
+        "element_of_risk": 0.0032673190393729956,
+        "std_per_round_units": 1.140843099925261,
+        "avg_wager_units": 1.13188365,
         "avg_initial_units": 1.0
       },
       "side_bets": {
         "perfect_pairs": {
-          "ev_per_round_units": -0.0612269,
-          "house_edge": 0.0612269,
-          "rounds_wagered": 10000000
+          "ev_per_round_units": -0.06072676,
+          "house_edge": 0.06072676,
+          "rounds_wagered": 100000000
         }
       },
       "total": {
-        "ev_per_round_units": -0.0648746,
-        "house_edge": 0.030432928016616036,
-        "std_per_round_units": 4.089850634065096
+        "ev_per_round_units": -0.064424985,
+        "house_edge": 0.030219747217443128,
+        "std_per_round_units": 4.0893917446289
       },
       "hourly": {
-        "ev_units": -6.4874600000000004,
-        "ev_dollars": -64.8746,
-        "std_dollars": 408.98506340650954,
-        "ci95_round_units": 0.0025349156855317885,
-        "ci95_hour_dollars": 2.5349156855317885
+        "ev_units": -6.4424985,
+        "ev_dollars": -64.424985,
+        "std_dollars": 408.9391744628899,
+        "ci95_round_units": 0.0008015207819472643,
+        "ci95_hour_dollars": 0.8015207819472643
       },
       "label": "6D S17 + Perfect Pairs",
-      "wall_seconds": 124.8,
-      "cores": 1
+      "wall_seconds": 0.9,
+      "cores": 10
     },
     {
       "rules_name": "6D S17 DAS LS 3:2",
@@ -400,39 +407,40 @@
         ],
         "side_bet_unit": 1.0
       },
-      "rounds": 10000000,
+      "engine": "c",
+      "rounds": 100000000,
       "dollars_per_unit": 10.0,
       "hands_per_hour": 100,
       "main": {
-        "ev_per_round_units": -0.0036477,
-        "house_edge": 0.0036477,
-        "element_of_risk": 0.0032231359609883646,
-        "std_per_round_units": 1.140351776569374,
-        "avg_wager_units": 1.1317239,
+        "ev_per_round_units": -0.003698225,
+        "house_edge": 0.003698225,
+        "element_of_risk": 0.0032673190393729956,
+        "std_per_round_units": 1.140843099925261,
+        "avg_wager_units": 1.13188365,
         "avg_initial_units": 1.0
       },
       "side_bets": {
         "21+3": {
-          "ev_per_round_units": -0.047517,
-          "house_edge": 0.047517,
-          "rounds_wagered": 10000000
+          "ev_per_round_units": -0.04627848,
+          "house_edge": 0.04627848,
+          "rounds_wagered": 100000000
         }
       },
       "total": {
-        "ev_per_round_units": -0.0511647,
-        "house_edge": 0.02400156042722043,
-        "std_per_round_units": 4.110494181128365
+        "ev_per_round_units": -0.049976705,
+        "house_edge": 0.02344251057040566,
+        "std_per_round_units": 4.1058974500151955
       },
       "hourly": {
-        "ev_units": -5.11647,
-        "ev_dollars": -51.164699999999996,
-        "std_dollars": 411.0494181128365,
-        "ci95_round_units": 0.0025477106885619313,
-        "ci95_hour_dollars": 2.5477106885619314
+        "ev_units": -4.9976705,
+        "ev_dollars": -49.976704999999995,
+        "std_dollars": 410.58974500151953,
+        "ci95_round_units": 0.0008047559002029783,
+        "ci95_hour_dollars": 0.8047559002029783
       },
       "label": "6D S17 + 21+3",
-      "wall_seconds": 155.9,
-      "cores": 1
+      "wall_seconds": 1.0,
+      "cores": 10
     },
     {
       "rules_name": "6D S17 DAS LS 3:2",
@@ -463,44 +471,45 @@
         ],
         "side_bet_unit": 1.0
       },
-      "rounds": 10000000,
+      "engine": "c",
+      "rounds": 100000000,
       "dollars_per_unit": 10.0,
       "hands_per_hour": 100,
       "main": {
-        "ev_per_round_units": -0.0036477,
-        "house_edge": 0.0036477,
-        "element_of_risk": 0.0032231359609883646,
-        "std_per_round_units": 1.140351776569374,
-        "avg_wager_units": 1.1317239,
+        "ev_per_round_units": -0.003698225,
+        "house_edge": 0.003698225,
+        "element_of_risk": 0.0032673190393729956,
+        "std_per_round_units": 1.140843099925261,
+        "avg_wager_units": 1.13188365,
         "avg_initial_units": 1.0
       },
       "side_bets": {
         "perfect_pairs": {
-          "ev_per_round_units": -0.0612269,
-          "house_edge": 0.0612269,
-          "rounds_wagered": 10000000
+          "ev_per_round_units": -0.06072676,
+          "house_edge": 0.06072676,
+          "rounds_wagered": 100000000
         },
         "21+3": {
-          "ev_per_round_units": -0.047517,
-          "house_edge": 0.047517,
-          "rounds_wagered": 10000000
+          "ev_per_round_units": -0.04627848,
+          "house_edge": 0.04627848,
+          "rounds_wagered": 100000000
         }
       },
       "total": {
-        "ev_per_round_units": -0.1123916,
-        "house_edge": 0.035888093455492674,
-        "std_per_round_units": 6.047814914153372
+        "ev_per_round_units": -0.110703465,
+        "house_edge": 0.03534724701538641,
+        "std_per_round_units": 6.045489044801617
       },
       "hourly": {
-        "ev_units": -11.23916,
-        "ev_dollars": -112.3916,
-        "std_dollars": 604.7814914153372,
-        "ci95_round_units": 0.0037484745191886295,
-        "ci95_hour_dollars": 3.7484745191886293
+        "ev_units": -11.0703465,
+        "ev_dollars": -110.703465,
+        "std_dollars": 604.5489044801617,
+        "ci95_round_units": 0.0011849158527811171,
+        "ci95_hour_dollars": 1.184915852781117
       },
       "label": "6D S17 + both sidebets",
-      "wall_seconds": 163.7,
-      "cores": 1
+      "wall_seconds": 1.0,
+      "cores": 10
     }
   ]
 }

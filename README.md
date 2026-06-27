@@ -8,7 +8,10 @@ rebuilt from scratch with side-bet support added.
 
 Everything runs **locally with no internet connection**. The engine is pure
 Python standard library; `matplotlib` is only needed for the optional static
-PNG charts.
+PNG charts. An **optional Cython "native" engine** compiles the round loop to
+multithreaded C for a ~100–150× speedup (see
+[Going fast](#going-fast-the-native-engine)); without it everything falls back to
+pure Python.
 
 ---
 
@@ -31,15 +34,17 @@ is roughly ±0.07% (vs ±0.22% at 1M).
 
 ### How many rounds do I need?
 
-| Rounds/config | 95% CI on house edge | Single-core time/config |
-|---------------|----------------------|-------------------------|
-| 1,000,000     | ±0.22%               | ~12 s                   |
-| 10,000,000    | ±0.07%               | ~115 s                  |
-| 100,000,000   | ±0.022%             | ~19 min                 |
+| Rounds/config | 95% CI on house edge | Python, 1 core | Native, 1 core |
+|---------------|----------------------|----------------|----------------|
+| 1,000,000     | ±0.22%               | ~12 s          | ~0.08 s        |
+| 10,000,000    | ±0.07%               | ~115 s         | ~0.75 s        |
+| 100,000,000   | ±0.022%              | ~19 min        | ~7.5 s         |
+| 1,000,000,000 | ±0.007%              | ~3 h           | ~75 s          |
 
 The error shrinks with the square root of the rounds, and wall-clock time falls
-roughly linearly with the number of cores. On an 8-core machine a 10M-round
-full sweep (9 configs) finishes in well under five minutes.
+roughly linearly with the number of cores. The pure-Python engine does a 10M-round
+sweep in a few minutes on a laptop; the [native engine](#going-fast-the-native-engine)
+makes 100M+ rounds — and a ±0.02% CI — routine in seconds.
 
 ---
 
@@ -73,6 +78,32 @@ Key flags: `--s17/--h17` (dealer stands/hits soft 17), `--das/--no-das`
 
 Presets available: `vegas_6deck_s17`, `vegas_6deck_h17`, `downtown_2deck_h17`,
 `single_deck_s17`, `bad_6deck_65`.
+
+---
+
+## Going fast: the native engine
+
+The simulator includes an **optional Cython engine** that ports the entire
+round loop to `nogil` C. It runs ~13M rounds/s per core (vs ~0.09M for pure
+Python) and uses real threads across cores, so 100M+ round runs — and the tight
+confidence intervals that come with them — take seconds instead of minutes.
+
+```bash
+pip install cython      # or: make dev
+make build              # python setup.py build_ext --inplace  (needs a C compiler)
+
+# --engine {auto,python,c}; "auto" (the default) uses the native engine if built
+python run_sim.py single --strategy basic --preset vegas_6deck_s17 \
+    --rounds 200000000 --cores 0 --engine c
+python run_sim.py sweep --rounds 100000000 --cores 0 --engine c
+```
+
+If you never build it, nothing changes — the simulator runs on pure Python as
+before. The native engine is a faithful port (it shares the strategy tables from
+`blackjack/strategy.py`, so there is one source of truth) and is cross-validated
+against the Python engine in `tests/test_fastsim.py`. It uses a different RNG, so
+it matches the Python engine's **expected values** but not its exact card draws
+for a given seed. Full details: [`docs/fast_engine.md`](docs/fast_engine.md).
 
 ---
 
@@ -170,12 +201,14 @@ blackjack-sim/
 ├── betspread.py            # bet-spread breakeven search for a card counter
 ├── strategy_ev.py          # Hi-Lo deviation + action-EV data for the strategy panel
 ├── dashboard_template.html # offline dashboard template (data inlined at build)
+├── setup.py                # builds the optional native (Cython) engine
 ├── requirements.txt        # matplotlib (only for the PNGs)
 ├── configs/
 │   └── vegas_6deck.json    # example rules file
 ├── docs/
 │   ├── bet_spreads.md          # lowest-risk breakeven spread analysis
-│   └── strategy_deviations.md  # deviations + per-action EV methodology
+│   ├── strategy_deviations.md  # deviations + per-action EV methodology
+│   └── fast_engine.md          # the optional native (Cython) engine
 ├── results/                # sweep.json, betspread_*.json, strategy_ev.json, dashboard.html, PNGs
 └── blackjack/              # the engine
     ├── cards.py            # card encoding, hand totals, blackjack check
@@ -186,25 +219,29 @@ blackjack-sim/
     ├── sidebets.py         # Perfect Pairs & 21+3 paytables and resolution
     ├── players.py          # BasicStrategy / CardCounter bettors
     ├── game.py             # one full round (splits, doubles, surrender, dealer)
+    ├── _fastsim.pyx        # optional native (Cython) port of the round loop
     └── simulator.py        # multi-core Monte-Carlo driver + statistics
 ```
 
 ## Requirements
 
 Python 3.9+. The engine needs **nothing but the standard library**. For the
-optional PNG charts: `pip install -r requirements.txt`.
+optional PNG charts: `pip install -r requirements.txt`. For the optional native
+engine: a C compiler plus `pip install cython`, then `make build`.
 
 ## Development & CI
 
 ```bash
-make dev       # install dev tooling (pytest, ruff, matplotlib)
+make dev       # install dev tooling (pytest, ruff, cython, matplotlib)
+make build     # compile the optional native engine in place
 make test      # run the test suite (~15s; small fixed-seed sims + unit tests)
 make lint      # ruff check .
 make validate  # cross-check the strategy tables against the EV calculator
 make help      # list all targets
 ```
 
-GitHub Actions (`.github/workflows/ci.yml`) runs lint + tests across Python
+GitHub Actions (`.github/workflows/ci.yml`) runs lint, builds the native engine,
+and runs tests (including the native-vs-Python cross-check) across Python
 3.9–3.12 on every push/PR, rebuilds the dashboard from the tracked
 `results/*.json`, and (on `main`) deploys it to **GitHub Pages** — enable it
 once under *Settings → Pages → Source: GitHub Actions*. The generated

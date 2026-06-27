@@ -23,3 +23,9 @@ env/
 # The source-of-truth simulation data (results/*.json) IS tracked.
 results/dashboard.html
 results/*.png
+
+# Native engine build artifacts — regenerate with `make build`.
+# The .pyx source IS tracked; the generated .c and compiled .so are not.
+blackjack/_fastsim.c
+blackjack/*.so
+*.so

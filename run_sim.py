@@ -91,7 +91,8 @@ def print_summary(res: dict) -> None:
     m = res["main"]
     h = res["hourly"]
     print(f"\n  Ruleset      : {res['rules_name']}")
-    print(f"  Strategy     : {res['strategy']}   rounds: {res['rounds']:,}")
+    print(f"  Strategy     : {res['strategy']}   rounds: {res['rounds']:,}"
+          f"   engine: {res.get('engine', 'python')}")
     print(f"  House edge   : {m['house_edge']*100:+.3f}%  (per original wager)")
     print(f"  Elem of risk : {m['element_of_risk']*100:+.3f}%  (per total risked)")
     print(f"  EV / round   : {res['total']['ev_per_round_units']:+.5f} units"
@@ -112,11 +113,12 @@ def cmd_single(args):
     rules = rules_from_args(args)
     kw = strategy_kwargs_from_args(args)
     cores = resolve_cores(args.cores)
-    print(f"  Running {args.rounds:,} rounds on {cores} core(s)...")
+    print(f"  Running {args.rounds:,} rounds on {cores} core(s) [{args.engine} engine]...")
     t = time.time()
     res = run_simulation(rules, args.strategy, rounds=args.rounds,
                          strategy_kwargs=kw, cores=cores,
-                         dollars_per_unit=args.dollars_per_unit, seed=args.seed)
+                         dollars_per_unit=args.dollars_per_unit, seed=args.seed,
+                         engine=args.engine)
     res["wall_seconds"] = round(time.time() - t, 1)
     res["cores"] = cores
     print_summary(res)
@@ -176,13 +178,14 @@ def cmd_sweep(args):
     results = []
     cores = resolve_cores(args.cores)
     total = len(runs)
-    print(f"  Sweep: {total} configs x {args.rounds:,} rounds on {cores} core(s)\n")
+    print(f"  Sweep: {total} configs x {args.rounds:,} rounds on {cores} core(s) "
+          f"[{args.engine} engine]\n")
     sweep_start = time.time()
     for idx, (strat, label, r, kw) in enumerate(runs, 1):
         t = time.time()
         res = run_simulation(r, strat, rounds=args.rounds, strategy_kwargs=kw,
                              cores=cores, dollars_per_unit=args.dollars_per_unit,
-                             seed=args.seed)
+                             seed=args.seed, engine=args.engine)
         res["label"] = label
         res["wall_seconds"] = round(time.time() - t, 1)
         res["cores"] = cores
@@ -217,6 +220,9 @@ def build_parser():
         sp.add_argument("--seed", type=int, default=None)
         sp.add_argument("--dollars-per-unit", type=float, default=10.0)
         sp.add_argument("--hands-per-hour", type=int, default=None)
+        sp.add_argument("--engine", choices=["auto", "python", "c"], default="auto",
+                        help="round engine: 'c' = native Cython (fast), 'python' = "
+                             "pure-stdlib reference, 'auto' = native if built (default)")
 
     sp = sub.add_parser("single", help="run one configuration")
     add_common(sp)

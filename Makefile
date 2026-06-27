@@ -1,6 +1,6 @@
 # Convenience targets. The engine needs no dependencies; `make dev` adds the
 # test/lint/PNG tooling.
-.PHONY: help dev test lint validate sweep dashboard betspread strategy clean
+.PHONY: help dev build test lint validate sweep dashboard betspread strategy clean
 
 ROUNDS ?= 10000000
 CORES  ?= 0
@@ -12,6 +12,9 @@ help:
 
 dev:        ## install dev/CI dependencies
 	pip install -r requirements-dev.txt
+
+build:      ## compile the optional native (Cython) fast engine in place
+	python setup.py build_ext --inplace
 
 test:       ## run the test suite
 	pytest
@@ -36,7 +39,9 @@ strategy:   ## generate Hi-Lo deviation + action-EV data -> results/strategy_ev.
 dashboard:  ## (re)build results/dashboard.html from existing results JSON
 	python visualize.py --data results/sweep.json
 
-clean:      ## remove generated dashboard/PNG outputs and caches
+clean:      ## remove generated dashboard/PNG outputs, native build, and caches
 	rm -f results/dashboard.html results/*.png
+	rm -f blackjack/_fastsim.c blackjack/*.so
+	rm -rf build
 	find . -name __pycache__ -type d -prune -exec rm -rf {} +
 	rm -rf .pytest_cache .ruff_cache

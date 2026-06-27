@@ -27,6 +27,8 @@ jobs:
         run: pip install -r requirements-dev.txt
       - name: Lint
         run: ruff check .
+      - name: Build native engine (Cython)
+        run: python setup.py build_ext --inplace
       - name: Run tests
         run: pytest
 

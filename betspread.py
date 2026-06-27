@@ -48,11 +48,12 @@ def build_ramp(top: int, top_tc: int = TOP_TC) -> dict[int, int]:
 
 
 def run_spread(rules: Rules, top: int, rounds: int, cores: int,
-               dollars_per_unit: float, seed: int | None) -> dict:
+               dollars_per_unit: float, seed: int | None, engine: str = "auto") -> dict:
     ramp = build_ramp(top)
     res = run_simulation(rules, "counter", rounds=rounds,
                          strategy_kwargs={"bet_ramp": ramp, "min_bet": 1.0},
-                         cores=cores, dollars_per_unit=dollars_per_unit, seed=seed)
+                         cores=cores, dollars_per_unit=dollars_per_unit, seed=seed,
+                         engine=engine)
     t, h = res["total"], res["hourly"]
     ev, sd = t["ev_per_round_units"], t["std_per_round_units"]
     return {
@@ -93,6 +94,8 @@ def main() -> None:
     ap.add_argument("--dollars-per-unit", type=float, default=10.0)
     ap.add_argument("--seed", type=int, default=12345)
     ap.add_argument("--tops", type=int, nargs="*", default=[1, 2, 3, 4, 5, 6, 8])
+    ap.add_argument("--engine", choices=["auto", "python", "c"], default="auto",
+                    help="round engine (default auto: native if built)")
     ap.add_argument("--out", help="write the full results JSON here")
     a = ap.parse_args()
 
@@ -110,7 +113,7 @@ def main() -> None:
     rows = []
     t0 = time.time()
     for top in a.tops:
-        r = run_spread(rules, top, a.rounds, cores, a.dollars_per_unit, a.seed)
+        r = run_spread(rules, top, a.rounds, cores, a.dollars_per_unit, a.seed, a.engine)
         rampstr = ",".join(str(r["ramp"][k]) for k in sorted(r["ramp"]))
         n0 = r["n0_rounds"]
         print(f"  1-{top:<6d} {rampstr:>14} {r['total_house_edge']*100:+9.4f} "
