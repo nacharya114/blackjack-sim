@@ -17,6 +17,10 @@ class Rules:
     csm: bool = False                  # continuous shuffle machine: reshuffle every
                                        # round (full N-deck stack), so the count never
                                        # builds -- penetration is then irrelevant.
+    csm_buffer: int = 0                # >0 = *windowed* CSM with a partial reservoir:
+                                       # the last `csm_buffer` dealt cards are held out
+                                       # of the dealable pool (a real one2six holds ~16),
+                                       # leaving a small, short-lived counting edge.
 
     # --- Dealer ---
     dealer_hits_soft_17: bool = False  # False = S17 (stand), True = H17 (hit)
@@ -54,7 +58,12 @@ class Rules:
         das = "DAS" if self.double_after_split else "noDAS"
         ls = "LS" if self.late_surrender else ("ES" if self.early_surrender else "noLS")
         pay = {1.5: "3:2", 1.2: "6:5", 1.0: "1:1"}.get(self.blackjack_payout, f"{self.blackjack_payout}x")
-        csm = " CSM" if self.csm else ""
+        if self.csm_buffer:
+            csm = f" CSM-{self.csm_buffer}"      # windowed CSM (partial reservoir)
+        elif self.csm:
+            csm = " CSM"
+        else:
+            csm = ""
         return f"{self.decks}D{csm} {s17} {das} {ls} {pay}"
 
     def to_dict(self) -> dict:

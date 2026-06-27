@@ -33,6 +33,9 @@ CONFIGS = [
     ("counter", Rules(decks=6, dealer_hits_soft_17=False, late_surrender=True,
                       penetration=0.85), {"bet_ramp": {1: 1, 2: 2, 3: 4, 4: 8, 5: 12}}),
     ("basic", Rules(decks=6, dealer_hits_soft_17=False, late_surrender=True, csm=True), {}),
+    ("basic", Rules(decks=6, dealer_hits_soft_17=False, late_surrender=True, csm_buffer=16), {}),
+    ("window_counter", Rules(decks=6, dealer_hits_soft_17=False, late_surrender=True,
+                             csm_buffer=16), {"bet_ramp": {5: 4, 6: 6, 7: 8, 8: 10, 9: 12}}),
 ]
 
 

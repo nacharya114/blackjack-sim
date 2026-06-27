@@ -86,6 +86,14 @@ strategy, and the per-hand edge is a hair *lower* than the matching shoe (no
 cut-card effect) — but it deals more hands/hour, so the player loses more overall.
 See [`docs/csm.md`](docs/csm.md).
 
+A **windowed CSM** (`--csm-buffer 16`) models a real partial-reservoir machine
+that holds the last ~16 dealt cards out of the pool. That leaves a thin counting
+signal — the Hi-Lo count of the buffer — which the `window_counter` strategy bets
+on. Bet-spreading alone only halves the house edge, but **Wonging** the good
+counts flips it to a small player edge (after
+[discountgambling.net](https://discountgambling.net/2012/07/27/counting-csm-blackjack-ev/));
+run `python csm_counting.py` and see [`docs/csm_counting.md`](docs/csm_counting.md).
+
 ---
 
 ## Going fast: the native engine
@@ -214,6 +222,7 @@ blackjack-sim/
 ├── betspread.py            # bet-spread breakeven search for a card counter
 ├── strategy_ev.py          # Hi-Lo deviation + action-EV data for the strategy panel
 ├── strategy_chart.py       # full strategy-chart grid (actions + deviations + EVs)
+├── csm_counting.py         # windowed-CSM counting analysis (per-count EV + spreads)
 ├── dashboard_template.html # offline dashboard template (data inlined at build)
 ├── setup.py                # builds the optional native (Cython) engine
 ├── requirements.txt        # matplotlib (only for the PNGs)
@@ -223,7 +232,8 @@ blackjack-sim/
 │   ├── bet_spreads.md          # lowest-risk breakeven spread analysis
 │   ├── strategy_deviations.md  # deviations + per-action EV methodology
 │   ├── fast_engine.md          # the optional native (Cython) engine
-│   └── csm.md                  # continuous shuffle machine analysis
+│   ├── csm.md                  # continuous shuffle machine analysis
+│   └── csm_counting.md         # counting a windowed (partial-reservoir) CSM
 ├── results/                # sweep.json, betspread_*.json, strategy_ev.json, dashboard.html, PNGs
 └── blackjack/              # the engine
     ├── cards.py            # card encoding, hand totals, blackjack check

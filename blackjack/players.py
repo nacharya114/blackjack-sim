@@ -67,10 +67,55 @@ class CardCounter:
         return strat.take_insurance(true_count)
 
 
+class WindowCounter:
+    """Counts the *buffer* of a windowed CSM and bets up when it is low-card rich.
+
+    On a windowed CSM the last `csm_buffer` dealt cards are held out of the
+    dealing pool, so the Hi-Lo count of that buffer (which `Shoe.true_count()`
+    returns directly in windowed mode -- no divisor) tells you how ten-rich the
+    pool is. Following discountgambling.net, this flat-bets the minimum until the
+    buffer count reaches the ramp, then bets up; it plays **basic strategy**
+    (there is no shoe count to take index plays on).
+
+    `bet_ramp` maps a buffer count to a bet; counts below the smallest key bet
+    `min_bet`, at/above the largest key bet its value.
+    """
+
+    DEFAULT_RAMP = {5: 4, 6: 6, 7: 8, 8: 10, 9: 12}
+
+    def __init__(self, bet_ramp: dict | None = None, min_bet: float = 1.0,
+                 insurance_at: int | None = None, side_bets=(), side_bet_unit: float = 1.0):
+        self.name = "window_counter"
+        self.ramp = bet_ramp or dict(self.DEFAULT_RAMP)
+        self.min_bet = min_bet
+        self._min_key = min(self.ramp)
+        self._max_key = max(self.ramp)
+        self.insurance_at = insurance_at      # buffer count to start taking insurance
+        self.side_bets = tuple(side_bets)
+        self.side_bet_unit = side_bet_unit
+
+    def bet(self, true_count: float) -> float:
+        wc = int(true_count)                  # the buffer count (already an integer)
+        if wc < self._min_key:
+            return self.min_bet
+        if wc >= self._max_key:
+            return float(self.ramp[self._max_key])
+        return float(self.ramp.get(wc, self.min_bet))
+
+    def play(self, cards, up, *, can_double, can_split, can_surrender, true_count, rules):
+        return strat.basic_action(cards, up, can_double=can_double, can_split=can_split,
+                                  can_surrender=can_surrender, rules=rules)
+
+    def insurance(self, true_count: float) -> bool:
+        return self.insurance_at is not None and true_count >= self.insurance_at
+
+
 def build_strategy(name: str, **kwargs):
     name = name.lower()
     if name in ("basic", "basic_strategy", "flat"):
         return BasicStrategy(**kwargs)
     if name in ("counter", "card_counter", "hilo"):
         return CardCounter(**kwargs)
+    if name in ("window_counter", "window", "csm_counter"):
+        return WindowCounter(**kwargs)
     raise ValueError(f"unknown strategy: {name}")

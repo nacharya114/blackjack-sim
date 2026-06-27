@@ -48,7 +48,7 @@ def _simulate_chunk(args) -> _Partial:
     rules = Rules.from_dict(rules_dict)
     strategy = build_strategy(strat_name, **strat_kwargs)
     rng = random.Random(seed)
-    shoe = Shoe(rules.decks, rules.penetration, rng=rng)
+    shoe = Shoe(rules.decks, rules.penetration, rng=rng, csm_buffer=rules.csm_buffer)
 
     p = _Partial()
     side_unit = getattr(strategy, "side_bet_unit", 1.0)
@@ -91,19 +91,24 @@ def _native_unsupported_reason(rules: Rules, paytables) -> str | None:
         return "custom side-bet paytables"
     if rules.decks > 8:
         return "more than 8 decks"
+    if rules.csm_buffer > 64:
+        return "windowed CSM buffer > 64"
     return None
 
 
 def _build_c_rules(rules: Rules):
     if rules.decks > 8:
         raise _CFallback("native engine supports up to 8 decks")
+    if rules.csm_buffer > 64:
+        raise _CFallback("native engine supports a csm_buffer up to 64")
     cut = int(rules.decks * 52 * (1.0 - rules.penetration))
     return (int(rules.decks), cut, int(rules.dealer_hits_soft_17), int(rules.dealer_peeks),
             float(rules.blackjack_payout), int(rules.double_allowed),
             int(rules.double_after_split), int(rules.double_totals[0]),
             int(rules.double_totals[1]), int(rules.max_split_hands),
             int(rules.resplit_aces), int(rules.hit_split_aces),
-            int(rules.late_surrender), int(rules.early_surrender), int(rules.csm))
+            int(rules.late_surrender), int(rules.early_surrender), int(rules.csm),
+            int(rules.csm_buffer))
 
 
 def _build_c_strat(strategy):
@@ -113,17 +118,26 @@ def _build_c_strat(strategy):
     pp = 1 if "perfect_pairs" in side_bets else 0
     tp = 1 if "21+3" in side_bets else 0
     su = float(getattr(strategy, "side_bet_unit", 1.0))
-    if getattr(strategy, "name", "") == "counter":
+    name = getattr(strategy, "name", "")
+    if name in ("counter", "window_counter"):
         ramp = strategy.ramp
         min_key, max_key = min(ramp), max(ramp)
         if max_key - min_key >= 64:
-            raise _CFallback("counter ramp span too wide for native engine")
+            raise _CFallback("ramp span too wide for native engine")
         dense = [float(ramp.get(k, strategy.min_bet)) for k in range(min_key, max_key + 1)]
-        c_strat = (1, 0.0, float(strategy.min_bet), int(min_key), int(max_key),
-                   dense, 1, pp, tp, su)
+        if name == "counter":
+            # bets ramp on the true count, plays Illustrious-18 deviations + insurance
+            c_strat = (1, 0.0, float(strategy.min_bet), int(min_key), int(max_key),
+                       dense, 1, pp, tp, su, 1)
+        else:
+            # window counter: bets ramp on the buffer count, plays basic strategy
+            if getattr(strategy, "insurance_at", None) is not None:
+                raise _CFallback("window-counter insurance not modelled in native engine")
+            c_strat = (1, 0.0, float(strategy.min_bet), int(min_key), int(max_key),
+                       dense, 0, pp, tp, su, 0)
     else:
         bet_units = float(getattr(strategy, "_bet", 1.0))
-        c_strat = (0, bet_units, 1.0, 0, 0, [], 0, pp, tp, su)
+        c_strat = (0, bet_units, 1.0, 0, 0, [], 0, pp, tp, su, 0)
     return c_strat, pp, tp
 
 

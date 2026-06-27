@@ -54,6 +54,8 @@ def rules_from_args(args) -> Rules:
         r.dealer_hits_soft_17 = False
     if getattr(args, "csm", False):
         r.csm = True
+    if getattr(args, "csm_buffer", None):
+        r.csm_buffer = args.csm_buffer
     if args.das is not None:
         r.double_after_split = args.das
     if args.ls is not None:
@@ -235,7 +237,8 @@ def build_parser():
 
     sp = sub.add_parser("single", help="run one configuration")
     add_common(sp)
-    sp.add_argument("--strategy", default="basic", choices=["basic", "counter"])
+    sp.add_argument("--strategy", default="basic",
+                    choices=["basic", "counter", "window_counter"])
     sp.add_argument("--preset", choices=list(PRESETS))
     sp.add_argument("--config", help="path to a rules JSON file")
     sp.add_argument("--decks", type=int)
@@ -245,6 +248,9 @@ def build_parser():
     sp.add_argument("--csm", action="store_true",
                     help="continuous shuffle machine: reshuffle every round "
                          "(kills card counting; penetration is ignored)")
+    sp.add_argument("--csm-buffer", type=int, default=None,
+                    help="windowed CSM: hold the last N dealt cards out of the pool "
+                         "(a partial reservoir, e.g. 16). Use with --strategy window_counter")
     sp.add_argument("--das", dest="das", action="store_true", default=None)
     sp.add_argument("--no-das", dest="das", action="store_false")
     sp.add_argument("--ls", dest="ls", action="store_true", default=None,

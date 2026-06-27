@@ -50,8 +50,9 @@ into a self-contained `dashboard.html`.**
     never builds (see `docs/csm.md`).
   - `shoe.py` — `Shoe`: shuffled multi-deck stack, cut card, Hi-Lo running/true count.
   - `strategy.py` — basic-strategy tables + Hi-Lo index deviations (Illustrious 18).
-  - `players.py` — `BasicStrategy` (flat) and `CardCounter` (`bet_ramp` → bet by
-    floor(true count); plays index deviations + insurance). `build_strategy()` factory.
+  - `players.py` — `BasicStrategy` (flat), `CardCounter` (`bet_ramp` → bet by
+    floor(true count); plays index deviations + insurance), and `WindowCounter`
+    (bets on a windowed CSM's buffer count; plays basic strategy). `build_strategy()`.
   - `sidebets.py` — Perfect Pairs & 21+3 paytables and resolution.
   - `game.py` — one full round: splits, doubles, surrender, dealer play, payout.
   - `simulator.py` — Monte-Carlo driver + EV/variance statistics. `run_simulation`
@@ -139,7 +140,15 @@ by `make dashboard` / CI.
 - **CSM** (`Rules(csm=True)` / `--csm`) reshuffles every round, so the count
   resets and counting is dead — a counter collapses to flat basic strategy. The
   CSM's per-hand edge is a touch lower than the matching shoe (no cut-card
-  effect); the casino wins via more hands/hour. `csm` is added to the C engine's
-  `Rules` tuple as the **last** field (index 14) — keep `_build_c_rules` and the
-  `_fastsim.pyx` unpacking in sync if the tuple changes.
+  effect); the casino wins via more hands/hour.
+- **Windowed CSM** (`Rules(csm_buffer=N)` / `--csm-buffer 16`) models a real
+  partial-reservoir machine: the `Shoe` deals from a pool = full shoe minus the
+  last N cards (held in a rolling buffer), and `Shoe.true_count()` returns the
+  buffer's Hi-Lo count. The `window_counter` strategy bets on it. Counting only
+  wins by **Wonging** (set `min_bet=0`); see `docs/csm_counting.md` and
+  `csm_counting.py`. The native engine implements this too — `csm` is `Rules`
+  tuple index 14, `csm_buffer` index 15; the strat tuple gained `play_deviations`
+  (index 10, distinguishes the deviation-playing counter from the basic-playing
+  window counter). Keep `_build_c_rules`/`_build_c_strat` and the `_fastsim.pyx`
+  unpacking in sync if these tuples change.
 - No network needed at any point; the dashboard opens from `file://`.

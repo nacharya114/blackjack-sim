@@ -181,6 +181,12 @@ cdef struct Shoe:
     int running_count
     int cut_card
     int decks
+    int buffer        # windowed CSM buffer depth (0 = off); cards[] is the pool
+    int pool_n        # windowed: number of cards currently in the dealable pool
+    int win[64]       # windowed: ring buffer of the last `buffer` dealt cards
+    int win_head
+    int win_fill
+    int win_count     # Hi-Lo running count of the buffer
 
 
 cdef inline void shoe_shuffle(Shoe* sh, RNG* rng) noexcept nogil:
@@ -194,12 +200,44 @@ cdef inline void shoe_shuffle(Shoe* sh, RNG* rng) noexcept nogil:
     sh.n = total
     sh.pos = 0
     sh.running_count = 0
+    if sh.buffer > 0:
+        # Windowed CSM: cards[] is the pool, drawn from at random; empty buffer.
+        sh.pool_n = total
+        sh.win_head = 0
+        sh.win_fill = 0
+        sh.win_count = 0
+        return
     # Fisher-Yates
     for i in range(total - 1, 0, -1):
         j = rand_below(rng, i + 1)
         tmp = sh.cards[i]
         sh.cards[i] = sh.cards[j]
         sh.cards[j] = tmp
+
+
+cdef inline int shoe_deal_windowed(Shoe* sh, RNG* rng) noexcept nogil:
+    # remove a uniform-random card from the pool (swap-with-last)
+    cdef int j = rand_below(rng, sh.pool_n)
+    cdef int card = sh.cards[j]
+    cdef int old
+    sh.pool_n -= 1
+    sh.cards[j] = sh.cards[sh.pool_n]
+    sh.cards[sh.pool_n] = card
+    # push into the ring buffer; evict the oldest once full (it rejoins the pool)
+    if sh.win_fill < sh.buffer:
+        sh.win[sh.win_head] = card
+        sh.win_count += hilo[card]
+        sh.win_head = (sh.win_head + 1) % sh.buffer
+        sh.win_fill += 1
+    else:
+        old = sh.win[sh.win_head]
+        sh.win_count -= hilo[old]
+        sh.cards[sh.pool_n] = old
+        sh.pool_n += 1
+        sh.win[sh.win_head] = card
+        sh.win_count += hilo[card]
+        sh.win_head = (sh.win_head + 1) % sh.buffer
+    return card
 
 
 cdef inline int cards_remaining(Shoe* sh) noexcept nogil:
@@ -211,10 +249,14 @@ cdef inline double decks_remaining(Shoe* sh) noexcept nogil:
 
 
 cdef inline int needs_shuffle(Shoe* sh) noexcept nogil:
+    if sh.buffer > 0:
+        return 0                         # a CSM never stops to shuffle
     return 1 if (sh.n - sh.pos) <= sh.cut_card else 0
 
 
 cdef inline double true_count(Shoe* sh) noexcept nogil:
+    if sh.buffer > 0:
+        return <double>sh.win_count      # windowed CSM: the buffer count is the signal
     cdef double dr = decks_remaining(sh)
     if dr > 0.25:
         return sh.running_count / dr
@@ -223,6 +265,8 @@ cdef inline double true_count(Shoe* sh) noexcept nogil:
 
 cdef inline int shoe_deal(Shoe* sh, RNG* rng) noexcept nogil:
     cdef int c
+    if sh.buffer > 0:
+        return shoe_deal_windowed(sh, rng)
     if sh.pos >= sh.n:
         shoe_shuffle(sh, rng)
     c = sh.cards[sh.pos]
@@ -233,6 +277,8 @@ cdef inline int shoe_deal(Shoe* sh, RNG* rng) noexcept nogil:
 
 cdef inline int shoe_deal_hidden(Shoe* sh, RNG* rng) noexcept nogil:
     cdef int c
+    if sh.buffer > 0:
+        return shoe_deal_windowed(sh, rng)   # buffer tracks every physical card
     if sh.pos >= sh.n:
         shoe_shuffle(sh, rng)
     c = sh.cards[sh.pos]
@@ -241,6 +287,8 @@ cdef inline int shoe_deal_hidden(Shoe* sh, RNG* rng) noexcept nogil:
 
 
 cdef inline void shoe_reveal(Shoe* sh, int card) noexcept nogil:
+    if sh.buffer > 0:
+        return                            # already accounted for in the buffer
     sh.running_count += hilo[card]
 
 
@@ -261,10 +309,11 @@ cdef struct Rules:
     int late_surr
     int early_surr
     int csm
+    int csm_buffer
 
 
 cdef struct Strat:
-    int is_counter
+    int is_counter        # bets off a ramp (counter or window_counter)
     double bet_units
     double min_bet
     int min_key
@@ -274,6 +323,7 @@ cdef struct Strat:
     int pp
     int tp
     double side_unit
+    int play_deviations   # plays Illustrious-18 index deviations (counter only)
 
 
 cdef struct Stats:
@@ -436,7 +486,7 @@ cdef inline char decide(int* cards, int n, int up, int can_double, int can_split
                         int can_surrender, double tc, Rules* ru, Strat* st) noexcept nogil:
     cdef int total, soft, i, is_pair_rank, hit
     cdef char a
-    if st.is_counter and n == 2:
+    if st.play_deviations and n == 2:
         hand_total(cards, n, &total, &soft)
         is_pair_rank = 1 if rank_index[cards[0]] == rank_index[cards[1]] else 0
         if not is_pair_rank:
@@ -457,9 +507,6 @@ cdef inline char decide(int* cards, int n, int up, int can_double, int can_split
                             return b'D' if can_double else b'H'
                         return a
                     break
-    elif st.is_counter:
-        # >2 cards: deviations are 2-card situations; fall through to basic
-        pass
     return basic_decide(cards, n, up, can_double, can_split, can_surrender, ru)
 
 
@@ -802,6 +849,7 @@ def simulate_chunk(tuple rules_t, tuple strat_t, long n_rounds,
     ru.late_surr = rules_t[12]
     ru.early_surr = rules_t[13]
     ru.csm = rules_t[14]
+    ru.csm_buffer = rules_t[15]
 
     cdef Strat st
     st.is_counter = strat_t[0]
@@ -814,6 +862,7 @@ def simulate_chunk(tuple rules_t, tuple strat_t, long n_rounds,
     st.pp = strat_t[7]
     st.tp = strat_t[8]
     st.side_unit = strat_t[9]
+    st.play_deviations = strat_t[10]
 
     cdef int i
     cdef int rlen = len(ramp_list)
@@ -825,6 +874,7 @@ def simulate_chunk(tuple rules_t, tuple strat_t, long n_rounds,
     cdef Shoe sh
     sh.decks = ru.decks
     sh.cut_card = ru.cut_card
+    sh.buffer = ru.csm_buffer
 
     cdef RNG rng
     seed_rng(&rng, seed)

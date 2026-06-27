@@ -87,6 +87,39 @@ def test_csm_counter_cannot_ramp_its_bets():
     assert std_shoe > std_csm + 1.0
 
 
+def test_windowed_csm_buffer_signal_frequency():
+    """A windowed CSM's buffer count is a live signal; per discountgambling.net it
+    is >= +5 about 8% of the time."""
+    import random
+
+    from blackjack.shoe import Shoe
+    rng = random.Random(1)
+    shoe = Shoe(6, 0.0, rng=rng, csm_buffer=16)
+    samples = []
+    for i in range(200_000):
+        if i >= 1000:                       # let the 16-card buffer fill
+            samples.append(shoe.window_count())
+        for _ in range(5):                  # roughly a heads-up round of cards
+            shoe.deal()
+    assert all(-16 <= c <= 16 for c in samples)
+    ge5 = sum(1 for c in samples if c >= 5) / len(samples)
+    assert 0.05 < ge5 < 0.12                # ~8% (loose band for the deal pattern)
+
+
+def test_windowed_csm_counter_ramps_on_buffer_signal():
+    """Unlike a full-reshuffle CSM (count dead, flat bets), a *windowed* CSM gives
+    the window counter a real signal, so its bet ramp engages and variance rises."""
+    rules = Rules(decks=6, dealer_hits_soft_17=False, double_after_split=True,
+                  late_surrender=True, csm_buffer=16)
+    flat_sd = _he(rules)["total"]["std_per_round_units"]
+    ramp = {5: 8, 6: 12, 7: 16, 8: 20, 9: 20}
+    spread = _he(rules, strategy="window_counter", bet_ramp=ramp)
+    # The bet ramp engages on the buffer signal, so variance climbs well above a
+    # flat better (on a *full-reshuffle* CSM the signal is dead and it would not).
+    # (Whether this beats the house needs far more rounds -- see docs/csm_counting.md.)
+    assert spread["total"]["std_per_round_units"] > flat_sd + 0.5
+
+
 def test_side_bet_breakdown_present():
     r = Rules(decks=6, penetration=0.75)
     res = _he(r, side_bets=("perfect_pairs",), side_bet_unit=1.0)
