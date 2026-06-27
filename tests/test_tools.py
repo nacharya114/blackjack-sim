@@ -3,7 +3,10 @@ import json
 
 
 import betspread
+import strategy_chart as sc
 import visualize
+from blackjack.evcalc import EVModel
+from blackjack.rules import Rules
 
 
 # --- betspread ramp / breakeven math ----------------------------------------
@@ -62,6 +65,74 @@ def test_build_dashboard_inlines_sweep_and_betspread(tmp_path):
     import re
     m = re.search(r"const BETSPREAD_DATA = (\[.*?\]);", html)
     assert json.loads(m.group(1))[0]["breakeven_top"] == 3.8
+
+
+# --- strategy chart generator ------------------------------------------------
+def test_strategy_chart_neutral_count_has_no_deviations():
+    """At true count 0 the chart must equal basic strategy for every cell."""
+    rules = Rules()                                   # 6D S17 DAS LS 3:2
+    tc_grid = list(range(-3, 6))
+    models = [EVModel(float(tc)) for tc in tc_grid]
+    i0 = tc_grid.index(0)
+    for total in range(5, 21):
+        for up in (2, 3, 4, 5, 6, 7, 8, 9, 10, 11):
+            cell = sc.cell_for(sc.hard_cards(total) if total <= 17 else
+                               [sc.card_for_value(10), sc.card_for_value(total - 10)],
+                               up, False, rules, tc_grid, models)
+            assert cell["acts"][i0] == cell["basic"], f"{total}v{up} deviates at TC 0"
+
+
+def test_strategy_chart_cells_match_engine_deviations():
+    rules = Rules()                                   # 6D S17 DAS LS 3:2
+    tc_grid = list(range(-3, 6))
+    models = [EVModel(float(tc)) for tc in tc_grid]
+
+    # 16 vs 10: surrender beats the I18 "stand" deviation under LS, so it
+    # surrenders at every count (no deviation from basic).
+    c16 = sc.cell_for(sc.hard_cards(16), 10, False, rules, tc_grid, models)
+    assert c16["basic"] == "R"
+    assert all(a == "R" for a in c16["acts"])
+    assert len(c16["ev"]["stand"]) == len(tc_grid)
+
+    # 12 vs 4: basic stands; the index play is to HIT below neutral (TC <= -1),
+    # NOT at TC 0.
+    c124 = sc.cell_for(sc.hard_cards(12), 4, False, rules, tc_grid, models)
+    assert c124["basic"] == "S"
+    assert c124["acts"][tc_grid.index(0)] == "S"
+    assert c124["acts"][tc_grid.index(-1)] == "H"
+
+    # 12 vs 3: basic hits, stands at TC >= 2 (a clean count deviation).
+    c123 = sc.cell_for(sc.hard_cards(12), 3, False, rules, tc_grid, models)
+    assert c123["basic"] == "H"
+    assert c123["acts"][tc_grid.index(2)] == "S"
+    assert c123["acts"][tc_grid.index(1)] == "H"
+
+
+def test_strategy_chart_card_helpers_are_clean_hands():
+    from blackjack.cards import RANK_INDEX, hand_total
+    for total in range(8, 18):
+        a, b = sc.hard_cards(total)
+        assert hand_total([a, b])[0] == total
+        assert hand_total([a, b])[1] is False          # not soft
+        assert RANK_INDEX[a] != RANK_INDEX[b]           # not a pair
+
+
+def test_build_dashboard_inlines_strategy_chart(tmp_path):
+    out = tmp_path / "dashboard.html"
+    chart = {"rules_name": "6D S17 DAS LS 3:2", "tc_grid": [-1, 0, 1],
+             "upcards": [2, 3], "insurance_index": 3, "insurance_take_at": [0, 0, 0],
+             "sections": [{"name": "Hard totals", "kind": "hard", "rows": [
+                 {"label": "16", "ev_kind": "hard", "split_note": False, "cells": [
+                     {"basic": "S", "acts": ["S", "S", "S"],
+                      "ev": {"stand": [-0.4, -0.4, -0.4], "hit": [-0.5, -0.5, -0.5],
+                             "double": [-1.0, -1.0, -1.0]}}]}]}]}
+    visualize.build_dashboard(_fake_sweep(), visualize.TEMPLATE, str(out),
+                              strategy_chart=chart)
+    html = out.read_text()
+    assert "/*__STRATEGY_CHART_DATA__*/" not in html   # marker fully replaced
+    import re
+    m = re.search(r"const STRATEGY_CHART_DATA = (\{.*?\});", html)
+    assert json.loads(m.group(1))["rules_name"] == "6D S17 DAS LS 3:2"
 
 
 def test_discover_betspread_reads_and_sorts(tmp_path):

@@ -69,12 +69,19 @@ into a self-contained `dashboard.html`.**
 - `blackjack/evcalc.py` + `strategy_ev.py` — analytic count-adjusted per-action
   EV calculator and the generator for the dashboard's strategy-deviation panel;
   self-validates EV crossovers against the engine indices (see
-  `docs/strategy_deviations.md`).
+  `docs/strategy_deviations.md`). `evcalc.action_evs` handles **hard and soft**
+  totals (pass `soft=`); only split EVs are still missing (roadmap #2).
+- `strategy_chart.py` — generates `results/strategy_chart.json` for the dashboard's
+  **basic-strategy-chart panel**: walks every pairs/soft/hard cell straight out of
+  the engine's `basic_action`/`counter_action`, recording the basic action, the
+  count action at each true count on a grid (for the deviation slider), and
+  per-action EV curves from `evcalc`. Always in sync with `strategy.py`.
 - `validate_strategy.py` — offline cross-check (`make validate`) that proves the
   hardcoded `BASIC_HARD` chart and `ILLUSTRIOUS_18` indices are EV-optimal
   (hard totals); guarded in CI by `tests/test_strategy_validation.py`.
 - `visualize.py` — builds `dashboard.html` (sweep data + any `betspread_*.json`
-  + `strategy_ev.json` inlined at `/*__…__*/` markers) and optional PNGs.
+  + `strategy_ev.json` + `strategy_chart.json` inlined at `/*__…__*/` markers)
+  and optional PNGs. `make strategy` regenerates both strategy JSONs.
 - `_run_chunk.py` — internal helper to compute a slice of the sweep resumably.
 - `setup.py` — builds `blackjack._fastsim` via `cythonize` (`make build`); the
   generated `.c`/`.so` are git-ignored, only `_fastsim.pyx` is tracked.

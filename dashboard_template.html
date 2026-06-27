@@ -99,6 +99,39 @@
   button.seg.on{background:var(--brass); color:#1a1205; font-weight:600; border-color:var(--brass)}
   td .act-s{color:var(--good)} td .act-h{color:#6db3ff} td .act-d{color:var(--brass-2)} td .act-r{color:var(--bad)}
   a{color:var(--brass-2)}
+
+  /* strategy chart grid */
+  .chart-wrap{overflow-x:auto; padding-bottom:4px}
+  .chart-sec h3{font-family:var(--sans); font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--muted); margin:14px 0 6px}
+  table.chart{width:auto; border-collapse:separate; border-spacing:3px; font-family:var(--mono); font-size:12px}
+  table.chart th{padding:2px 0; text-align:center; color:var(--muted); font-size:10.5px; border:0; cursor:default;
+    letter-spacing:0; text-transform:none; min-width:30px}
+  table.chart th:first-child{text-align:right; padding-right:8px}
+  table.chart td{padding:0; border:0}
+  table.chart td.rh{color:var(--cream); text-align:right; padding-right:8px; font-weight:600; white-space:nowrap}
+  .cl{display:flex; align-items:center; justify-content:center; width:30px; height:26px; border-radius:5px;
+    cursor:pointer; font-weight:600; border:1px solid transparent; position:relative; user-select:none}
+  .cl:hover{outline:1px solid var(--brass-2)}
+  .cl.sel{outline:2px solid var(--cream); outline-offset:0}
+  .cl.dev{border-color:var(--brass); box-shadow:0 0 0 1px var(--brass)}
+  .cl-S{background:rgba(95,207,154,.16); color:#5fcf9a}
+  .cl-H{background:rgba(109,179,255,.16); color:#6db3ff}
+  .cl-D{background:rgba(226,196,99,.20); color:#e2c463}
+  .cl-V{background:rgba(226,196,99,.12); color:#e2c463}
+  .cl-P{background:rgba(182,156,255,.20); color:#c3b0ff}
+  .cl-R{background:rgba(224,112,92,.18); color:#e0705c}
+  .cl .heat{position:absolute; left:2px; right:2px; bottom:1px; height:3px; border-radius:2px; background:#e0705c}
+  .chart-detail{margin:10px 0 0; padding:12px 14px; border:1px solid var(--line); border-radius:10px;
+    background:rgba(0,0,0,.20); display:none}
+  .chart-detail h4{margin:0 0 8px; font-family:var(--serif); font-size:14px; font-weight:600}
+  .evbar-row{display:flex; align-items:center; gap:10px; margin:5px 0; font-family:var(--mono); font-size:12px}
+  .evbar-lab{flex:0 0 92px}
+  .evbar-track{flex:1; position:relative; height:16px; background:rgba(0,0,0,.25); border:1px solid var(--line); border-radius:4px}
+  .evbar-fill{position:absolute; top:0; bottom:0; border-radius:3px; opacity:.85}
+  .evbar-zero{position:absolute; top:0; bottom:0; width:1px; background:var(--muted); opacity:.7}
+  .evbar-val{flex:0 0 96px; text-align:right}
+  .seg.on-soft{cursor:default}
 </style>
 </head>
 <body>
@@ -225,6 +258,31 @@
         hitting plays optimally after). The true count where the basic and deviation curves cross <b>is</b> the index.
         See <span class="chip">docs/strategy_deviations.md</span>.</div>
     </div>
+
+    <div class="card full" id="chart-card" style="display:none">
+      <h2>Basic strategy chart <span class="tag" id="chart-rules">action by hand</span>
+        <span style="margin-left:auto; display:flex; gap:16px; align-items:center; flex-wrap:wrap">
+          <span style="display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:12px">
+            <label style="color:var(--muted); letter-spacing:.1em; text-transform:uppercase; font-size:10.5px; margin:0">True count</label>
+            <button class="seg" id="chart-tc-dn">&minus;</button>
+            <input type="range" id="chart-tc" style="width:150px; min-width:0; padding:0" min="-6" max="10" step="1" value="0">
+            <button class="seg" id="chart-tc-up">+</button>
+            <b id="chart-tc-val" style="min-width:30px; text-align:center; color:var(--brass-2)">0</b>
+          </span>
+          <button class="seg" id="chart-ev-toggle">Show action EVs</button>
+        </span>
+      </h2>
+      <div id="chart-dev-summary" class="note" style="margin:0 0 10px"></div>
+      <div class="chart-wrap" id="chart-grids"></div>
+      <div class="chart-detail" id="chart-detail"></div>
+      <div class="legend" id="chart-legend"></div>
+      <div class="note">Cells are the engine's basic strategy; drag the <b>true count</b> slider to see the
+        Hi-Lo deviations (outlined, brass) the counter switches to at that count. Only hard totals deviate
+        (the Illustrious 18 are hard hands + insurance). With <b>Show action EVs</b> on, each cell is tinted
+        by how marginal the decision is (warmer = closer call) and clicking a cell shows every action's EV at
+        the selected count. EVs are exact for hard &amp; soft totals; pair rows show the hand played as its
+        total (the split action's EV is not modelled yet). See <span class="chip">docs/strategy_deviations.md</span>.</div>
+    </div>
   </div>
 </div>
 
@@ -232,6 +290,7 @@
 const SWEEP_DATA = /*__SWEEP_DATA__*/ null;
 const BETSPREAD_DATA = /*__BETSPREAD_DATA__*/ null;
 const STRATEGY_DATA = /*__STRATEGY_DATA__*/ null;
+const STRATEGY_CHART_DATA = /*__STRATEGY_CHART_DATA__*/ null;
 
 let DATA = SWEEP_DATA;
 let selIndex = 0;
@@ -615,8 +674,150 @@ $("file").addEventListener("change", e=>{
   fr.readAsText(f);
 });
 
+// ---- basic strategy chart panel ----
+const CH_ACT_FULL={S:"Stand",H:"Hit",D:"Double / Hit",V:"Double / Stand",P:"Split",R:"Surrender"};
+const CH_ACT_CELL={S:"S",H:"H",D:"D",V:"Ds",P:"P",R:"R"};
+const CH_EV_COLOR={stand:"#5fcf9a",hit:"#6db3ff",double:"#e2c463",surrender:"#e0705c"};
+let CH={tc:0, ev:false, sel:null};   // sel = {s,r,u} section/row/up indices
+
+function setupStrategyChart(){
+  const D=STRATEGY_CHART_DATA;
+  if(!D || !D.sections) return;
+  $("chart-card").style.display="";
+  $("chart-rules").textContent = D.rules_name || "action by hand";
+
+  const sl=$("chart-tc");
+  sl.min=D.tc_grid[0]; sl.max=D.tc_grid[D.tc_grid.length-1]; sl.value=0;
+  CH.tc=0;
+
+  sl.oninput=()=>{ CH.tc=+sl.value; renderChart(); };
+  $("chart-tc-dn").onclick=()=>{ sl.value=Math.max(+sl.min, +sl.value-1); CH.tc=+sl.value; renderChart(); };
+  $("chart-tc-up").onclick=()=>{ sl.value=Math.min(+sl.max, +sl.value+1); CH.tc=+sl.value; renderChart(); };
+  $("chart-ev-toggle").onclick=()=>{
+    CH.ev=!CH.ev;
+    $("chart-ev-toggle").classList.toggle("on",CH.ev);
+    if(!CH.ev){ CH.sel=null; $("chart-detail").style.display="none"; }
+    renderChart();
+  };
+
+  // legend
+  $("chart-legend").innerHTML =
+    Object.entries(CH_ACT_FULL).map(([c,name])=>
+      `<span><i style="background:${cellBg(c)}; border:1px solid ${cellFg(c)}"></i>${CH_ACT_CELL[c]} ${name}</span>`).join("")
+    + `<span><i style="background:transparent; box-shadow:0 0 0 1px var(--brass)"></i>deviation</span>`;
+
+  renderChart();
+}
+
+function cellBg(c){return {S:"rgba(95,207,154,.16)",H:"rgba(109,179,255,.16)",D:"rgba(226,196,99,.20)",
+  V:"rgba(226,196,99,.12)",P:"rgba(182,156,255,.20)",R:"rgba(224,112,92,.18)"}[c]||"transparent";}
+function cellFg(c){return {S:"#5fcf9a",H:"#6db3ff",D:"#e2c463",V:"#e2c463",P:"#c3b0ff",R:"#e0705c"}[c]||"#ccc";}
+
+function chTcIdx(){ return STRATEGY_CHART_DATA.tc_grid.indexOf(CH.tc); }
+function fmtEv(x){ return (x>=0?"+":"")+x.toFixed(3); }
+
+// EVs available for a cell at tc index i (surrender is a flat -0.5)
+function cellEVs(cell,i){
+  return {stand:cell.ev.stand[i], hit:cell.ev.hit[i], double:cell.ev.double[i], surrender:-0.5};
+}
+// decision margin = gap between the best and second-best known action EV
+function cellMargin(cell,i){
+  const vs=Object.values(cellEVs(cell,i)).sort((a,b)=>b-a);
+  return vs[0]-vs[1];
+}
+
+function renderChart(){
+  const D=STRATEGY_CHART_DATA, grid=D.tc_grid, i=chTcIdx();
+  $("chart-tc-val").textContent=(CH.tc>0?"+":"")+CH.tc;
+  $("chart-ev-toggle").classList.toggle("on",CH.ev);
+
+  const ups=D.upcards;
+  let html="";
+  let nDev=0;
+  D.sections.forEach((sec,s)=>{
+    html+=`<div class="chart-sec"><h3>${sec.name}</h3><table class="chart"><thead><tr><th></th>`+
+      ups.map(u=>`<th>${u===11?"A":u}</th>`).join("")+`</tr></thead><tbody>`;
+    sec.rows.forEach((row,r)=>{
+      html+=`<tr><td class="rh">${row.label}</td>`;
+      row.cells.forEach((cell,u)=>{
+        const act=cell.acts[i], dev=act!==cell.basic;
+        if(dev) nDev++;
+        let heat="";
+        if(CH.ev){
+          const m=cellMargin(cell,i);
+          const a=Math.max(0,Math.min(1,(0.06-m)/0.06));
+          if(a>0.02) heat=`<span class="heat" style="opacity:${(a*0.9).toFixed(2)}"></span>`;
+        }
+        const selCls=(CH.sel&&CH.sel.s===s&&CH.sel.r===r&&CH.sel.u===u)?" sel":"";
+        const inner=dev?`<b>${CH_ACT_CELL[act]}</b>`:CH_ACT_CELL[act];
+        const tip=dev?`${row.label} vs ${ups[u]===11?"A":ups[u]}: basic ${CH_ACT_FULL[cell.basic]} → ${CH_ACT_FULL[act]} at TC ${CH.tc>0?"+":""}${CH.tc}`
+                     :`${row.label} vs ${ups[u]===11?"A":ups[u]}: ${CH_ACT_FULL[act]}`;
+        html+=`<td><div class="cl cl-${act}${dev?" dev":""}${selCls}" title="${tip}" `+
+              `data-s="${s}" data-r="${r}" data-u="${u}">${inner}${heat}</div></td>`;
+      });
+      html+=`</tr>`;
+    });
+    html+=`</tbody></table></div>`;
+  });
+  $("chart-grids").innerHTML=html;
+
+  const ins=D.insurance_take_at[i]===1;
+  $("chart-dev-summary").innerHTML=
+    `<b style="color:var(--brass-2)">${nDev}</b> deviation${nDev===1?"":"s"} from basic strategy at true count `+
+    `<b>${CH.tc>0?"+":""}${CH.tc}</b>. Insurance: `+
+    (ins?`<b class="pos">TAKE</b> (TC ≥ +${D.insurance_index})`:`<span class="neg">don't take</span>`)+
+    (CH.ev?` &nbsp;·&nbsp; <span class="sub">click a cell for its action EVs</span>`:"");
+
+  if(CH.sel) renderChartDetail();
+}
+
+function renderChartDetail(){
+  const D=STRATEGY_CHART_DATA, i=chTcIdx(), {s,r,u}=CH.sel;
+  const sec=D.sections[s], row=sec.rows[r], cell=row.cells[u], up=D.upcards[u];
+  const det=$("chart-detail");
+  if(!CH.ev){ det.style.display="none"; return; }
+  const evs=cellEVs(cell,i);
+  const act=cell.acts[i];
+  const chosen={S:"stand",H:"hit",D:"double",V:"double",P:null,R:"surrender"}[act];
+  const vals=Object.values(evs);
+  const lo=Math.min(0,...vals), hi=Math.max(0,...vals), span=(hi-lo)||1;
+  const best=Object.keys(evs).reduce((a,b)=>evs[b]>evs[a]?b:a);
+  const order=["stand","hit","double","surrender"];
+  let bars=order.map(k=>{
+    const v=evs[k];
+    const zero=(0-lo)/span*100;
+    const x0=Math.min(v,0), x1=Math.max(v,0);
+    const left=(x0-lo)/span*100, width=(x1-x0)/span*100;
+    const isChosen=(k===chosen);
+    const isBest=(k===best);
+    return `<div class="evbar-row">`+
+      `<span class="evbar-lab" style="color:${CH_EV_COLOR[k]}">${k[0].toUpperCase()+k.slice(1)}${isChosen?" ◀":""}</span>`+
+      `<span class="evbar-track"><span class="evbar-zero" style="left:${zero}%"></span>`+
+      `<span class="evbar-fill" style="left:${left}%; width:${Math.max(width,0.6)}%; background:${CH_EV_COLOR[k]}"></span></span>`+
+      `<span class="evbar-val ${v>0?'pos':(v<0?'neg':'')}">${fmtEv(v)}${isBest?" ★":""}</span></div>`;
+  }).join("");
+  const upn=up===11?"A":up;
+  let note=`<div class="note" style="margin-top:8px">Engine plays <b style="color:${cellFg(act)}">`+
+    `${CH_ACT_FULL[act]}</b>${act!==cell.basic?` (deviation from ${CH_ACT_FULL[cell.basic]})`:""}. `+
+    `★ = highest EV, ◀ = engine's action.`;
+  if(sec.kind==="pairs") note+=` This row is a pair — the bars show the hand played as a hard/soft total; `+
+    `the <b>Split</b> action's EV is not modelled yet (roadmap).`;
+  note+=`</div>`;
+  det.innerHTML=`<h4>${row.label} vs ${upn} &nbsp;<span class="sub" style="font-size:12px; font-weight:400">`+
+    `at true count ${CH.tc>0?"+":""}${CH.tc}</span></h4>${bars}${note}`;
+  det.style.display="block";
+}
+
+$("chart-grids")?.addEventListener("click", e=>{
+  const c=e.target.closest(".cl"); if(!c) return;
+  CH.sel={s:+c.dataset.s, r:+c.dataset.r, u:+c.dataset.u};
+  if(!CH.ev){ CH.ev=true; $("chart-ev-toggle").classList.add("on"); }
+  renderChart();
+});
+
 setupBetspread();
 setupStrategy();
+setupStrategyChart();
 if(DATA && DATA.results){ render(); }
 else {
   document.querySelector(".wrap").insertAdjacentHTML("beforeend",

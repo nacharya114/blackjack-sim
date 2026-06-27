@@ -129,6 +129,12 @@ so it opens straight from disk — no local server, no CORS issues. It gives you
   insurance) and **per-action EV curves** vs. true count, where the basic and
   deviation curves cross at the index. Generate with `strategy_ev.py`; details
   in `docs/strategy_deviations.md`.
+- A **basic strategy chart panel** (shown when `results/strategy_chart.json`
+  exists): the full color-coded action grid (pairs / soft / hard) with a
+  **true-count slider** that switches cells to the Hi-Lo deviations the counter
+  plays — outlining the cells that change — and a **Show action EVs** toggle that
+  tints each cell by how marginal the decision is and, on click, shows every
+  action's EV at the selected count. Generate with `strategy_chart.py`.
 - A **file picker** to load any other `sweep.json` you generate.
 
 `visualize.py` also writes three static PNGs (`house_edge_by_ruleset.png`,
@@ -200,6 +206,7 @@ blackjack-sim/
 ├── visualize.py            # builds dashboard.html + PNG charts from a sweep
 ├── betspread.py            # bet-spread breakeven search for a card counter
 ├── strategy_ev.py          # Hi-Lo deviation + action-EV data for the strategy panel
+├── strategy_chart.py       # full strategy-chart grid (actions + deviations + EVs)
 ├── dashboard_template.html # offline dashboard template (data inlined at build)
 ├── setup.py                # builds the optional native (Cython) engine
 ├── requirements.txt        # matplotlib (only for the PNGs)
