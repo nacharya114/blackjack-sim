@@ -45,6 +45,9 @@ into a self-contained `dashboard.html`.**
   - `cards.py` — card = int 0..51; precomputed lookup tuples (`BJ_VALUE`,
     `HILO`, `SUIT`, …); `hand_total`, `is_blackjack`.
   - `rules.py` — `Rules` dataclass (every edge-affecting table rule) + `PRESETS`.
+    Includes `csm` (continuous shuffle machine): when set, `game.play_round` and
+    the native engine reshuffle a full N-deck stack every round, so the count
+    never builds (see `docs/csm.md`).
   - `shoe.py` — `Shoe`: shuffled multi-deck stack, cut card, Hi-Lo running/true count.
   - `strategy.py` — basic-strategy tables + Hi-Lo index deviations (Illustrious 18).
   - `players.py` — `BasicStrategy` (flat) and `CardCounter` (`bet_ramp` → bet by
@@ -133,4 +136,10 @@ by `make dashboard` / CI.
 - Single/double-deck use the 4–8 deck strategy chart (slight underestimate there).
 - The counter plays **every round** (no Wonging) — a "bet spread" means flat
   1 unit through neutral/negative counts, ramping up as the true count rises.
+- **CSM** (`Rules(csm=True)` / `--csm`) reshuffles every round, so the count
+  resets and counting is dead — a counter collapses to flat basic strategy. The
+  CSM's per-hand edge is a touch lower than the matching shoe (no cut-card
+  effect); the casino wins via more hands/hour. `csm` is added to the C engine's
+  `Rules` tuple as the **last** field (index 14) — keep `_build_c_rules` and the
+  `_fastsim.pyx` unpacking in sync if the tuple changes.
 - No network needed at any point; the dashboard opens from `file://`.

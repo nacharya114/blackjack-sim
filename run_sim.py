@@ -52,6 +52,8 @@ def rules_from_args(args) -> Rules:
         r.dealer_hits_soft_17 = True
     if args.s17:
         r.dealer_hits_soft_17 = False
+    if getattr(args, "csm", False):
+        r.csm = True
     if args.das is not None:
         r.double_after_split = args.das
     if args.ls is not None:
@@ -156,11 +158,18 @@ def build_sweep_matrix(hands_per_hour=100):
     counter_rules = Rules(decks=6, dealer_hits_soft_17=False, double_after_split=True,
                           late_surrender=True, blackjack_payout=1.5, penetration=0.85,
                           hands_per_hour=hph)
+    # Continuous shuffle machine, matched to the 6D S17 shoe game above. A CSM
+    # reshuffles every round, so counting is dead -- but it deals faster, so we
+    # model ~30% more hands/hour (the casino's real edge).
+    csm_rules = Rules(decks=6, csm=True, dealer_hits_soft_17=False, double_after_split=True,
+                      late_surrender=True, blackjack_payout=1.5, hands_per_hour=int(hph * 1.3))
 
     runs = []
     for name, r in rulesets.items():
         runs.append(("basic", name, r, {}))
     runs.append(("counter", "6D S17 DAS LS 3:2 (deep)", counter_rules, {}))
+    runs.append(("basic", "6D CSM S17 DAS LS 3:2", csm_rules, {}))
+    runs.append(("counter", "6D CSM S17 DAS LS 3:2 (counter)", csm_rules, {}))
     main = rulesets["6D S17 DAS LS 3:2"]
     runs.append(("basic", "6D S17 + Perfect Pairs", main,
                  {"side_bets": ("perfect_pairs",), "side_bet_unit": 1.0}))
@@ -233,6 +242,9 @@ def build_parser():
     sp.add_argument("--penetration", type=float)
     sp.add_argument("--s17", action="store_true", help="dealer stands soft 17")
     sp.add_argument("--h17", action="store_true", help="dealer hits soft 17")
+    sp.add_argument("--csm", action="store_true",
+                    help="continuous shuffle machine: reshuffle every round "
+                         "(kills card counting; penetration is ignored)")
     sp.add_argument("--das", dest="das", action="store_true", default=None)
     sp.add_argument("--no-das", dest="das", action="store_false")
     sp.add_argument("--ls", dest="ls", action="store_true", default=None,

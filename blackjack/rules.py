@@ -14,6 +14,9 @@ class Rules:
     # --- Shoe ---
     decks: int = 6
     penetration: float = 0.75          # fraction of the shoe dealt before reshuffle
+    csm: bool = False                  # continuous shuffle machine: reshuffle every
+                                       # round (full N-deck stack), so the count never
+                                       # builds -- penetration is then irrelevant.
 
     # --- Dealer ---
     dealer_hits_soft_17: bool = False  # False = S17 (stand), True = H17 (hit)
@@ -51,7 +54,8 @@ class Rules:
         das = "DAS" if self.double_after_split else "noDAS"
         ls = "LS" if self.late_surrender else ("ES" if self.early_surrender else "noLS")
         pay = {1.5: "3:2", 1.2: "6:5", 1.0: "1:1"}.get(self.blackjack_payout, f"{self.blackjack_payout}x")
-        return f"{self.decks}D {s17} {das} {ls} {pay}"
+        csm = " CSM" if self.csm else ""
+        return f"{self.decks}D{csm} {s17} {das} {ls} {pay}"
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -77,4 +81,10 @@ PRESETS = {
                              late_surrender=False, blackjack_payout=1.5),
     "bad_6deck_65": Rules(decks=6, dealer_hits_soft_17=True, double_after_split=False,
                           late_surrender=False, blackjack_payout=1.2),
+    # Continuous shuffle machine: every round is dealt from a full shoe, so card
+    # counting is worthless. CSMs also deal faster -> more hands/hour (the casino's
+    # real edge). Matched to vegas_6deck_s17 so the two are directly comparable.
+    "csm_6deck_s17": Rules(decks=6, csm=True, dealer_hits_soft_17=False,
+                           double_after_split=True, late_surrender=True,
+                           blackjack_payout=1.5, hands_per_hour=130),
 }

@@ -73,11 +73,18 @@ python run_sim.py single --strategy basic --config configs/vegas_6deck.json \
 
 Key flags: `--s17/--h17` (dealer stands/hits soft 17), `--das/--no-das`
 (double after split), `--ls/--no-ls` (late surrender), `--payout` (1.5 = 3:2,
-1.2 = 6:5), `--penetration` (fraction of shoe dealt before reshuffle),
+1.2 = 6:5), `--penetration` (fraction of shoe dealt before reshuffle), `--csm`
+(continuous shuffle machine — reshuffle every round; kills card counting),
 `--dollars-per-unit`, `--hands-per-hour`, `--cores`, `--seed`.
 
 Presets available: `vegas_6deck_s17`, `vegas_6deck_h17`, `downtown_2deck_h17`,
-`single_deck_s17`, `bad_6deck_65`.
+`single_deck_s17`, `bad_6deck_65`, `csm_6deck_s17`.
+
+A **continuous shuffle machine** (`--csm`) deals a fresh shoe every round, so the
+count never builds: card counting is worthless, the optimal play is plain basic
+strategy, and the per-hand edge is a hair *lower* than the matching shoe (no
+cut-card effect) — but it deals more hands/hour, so the player loses more overall.
+See [`docs/csm.md`](docs/csm.md).
 
 ---
 
@@ -215,7 +222,8 @@ blackjack-sim/
 ├── docs/
 │   ├── bet_spreads.md          # lowest-risk breakeven spread analysis
 │   ├── strategy_deviations.md  # deviations + per-action EV methodology
-│   └── fast_engine.md          # the optional native (Cython) engine
+│   ├── fast_engine.md          # the optional native (Cython) engine
+│   └── csm.md                  # continuous shuffle machine analysis
 ├── results/                # sweep.json, betspread_*.json, strategy_ev.json, dashboard.html, PNGs
 └── blackjack/              # the engine
     ├── cards.py            # card encoding, hand totals, blackjack check

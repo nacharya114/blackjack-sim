@@ -103,7 +103,7 @@ def _build_c_rules(rules: Rules):
             int(rules.double_after_split), int(rules.double_totals[0]),
             int(rules.double_totals[1]), int(rules.max_split_hands),
             int(rules.resplit_aces), int(rules.hit_split_aces),
-            int(rules.late_surrender), int(rules.early_surrender))
+            int(rules.late_surrender), int(rules.early_surrender), int(rules.csm))
 
 
 def _build_c_strat(strategy):

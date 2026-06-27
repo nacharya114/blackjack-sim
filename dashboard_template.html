@@ -147,7 +147,7 @@
 
   <div class="controls">
     <div class="ctl"><label>$ per unit (base bet)</label><input id="dpu" type="number" min="1" step="1" value="25"></div>
-    <div class="ctl"><label>Hands / hour</label><input id="hph" type="number" min="10" step="10" value="100"></div>
+    <div class="ctl"><label>Hands / hour (session)</label><input id="hph" type="number" min="10" step="10" value="100"></div>
     <div class="ctl"><label>Session hours</label><input id="hrs" type="number" min="0.5" step="0.5" value="4"></div>
     <div class="ctl"><label>Bankroll ($)</label><input id="bank" type="number" min="100" step="100" value="5000"></div>
     <div class="ctl"><label>Load other sweep.json</label>
@@ -301,8 +301,9 @@ const fmtPct = x => (x*100>=0?"+":"") + (x*100).toFixed(3) + "%";
 const fmtMoney = x => (x>=0?"+$":"-$") + Math.abs(x).toFixed(2);
 const cls = x => x>0 ? "pos" : (x<0 ? "neg" : "");
 
-function rowMetrics(r){
-  const dpu = +$("dpu").value, hph = +$("hph").value;
+function rowMetrics(r, hph){
+  const dpu = +$("dpu").value;
+  if(hph == null) hph = r.hands_per_hour || +$("hph").value;
   const evRoundUnits = r.total.ev_per_round_units;
   const hourly = evRoundUnits * hph * dpu;
   const sigma = r.total.std_per_round_units * Math.sqrt(hph) * dpu;
@@ -315,6 +316,15 @@ function rowMetrics(r){
     hourly, sigma,
     rounds: r.rounds,
   };
+}
+
+function selectRun(i){
+  selIndex = i;
+  // Seed the session "hands/hour" control from the selected game's own pace
+  // (e.g. a CSM deals faster than a hand-shuffled shoe). The user can override.
+  const h = DATA.results[i] && DATA.results[i].hands_per_hour;
+  if(h) $("hph").value = h;
+  render();
 }
 
 function render(){
@@ -344,7 +354,7 @@ function render(){
       `<td class="${cls(m.hourly)}">${fmtMoney(m.hourly)}</td>`+
       `<td class="sub">$${m.sigma.toFixed(0)}</td>`+
       `<td class="sub">${(m.rounds/1e6).toFixed(1)}M</td>`;
-    tr.onclick = ()=>{selIndex=i; render();};
+    tr.onclick = ()=>selectRun(i);
     tb.appendChild(tr);
   }
   document.querySelectorAll("#tbl th").forEach(th=>{
@@ -381,8 +391,8 @@ function drawBars(elId, items, unit, lowerIsBetter){
 
 function renderSelected(){
   const r = DATA.results[selIndex];
-  const m = rowMetrics(r);
   const dpu=+$("dpu").value, hph=+$("hph").value, hrs=+$("hrs").value;
+  const m = rowMetrics(r, hph);   // session panel follows the interactive control
   $("sel-title").textContent = m.label + "  ·  " + m.strategy;
   $("sel-he").innerHTML = `<span class="${cls(-m.he)}">${fmtPct(m.he)}</span> <span class="sub" style="font-size:14px">house edge</span>`;
   const sessionEV = m.hourly*hrs;
@@ -670,7 +680,7 @@ document.querySelectorAll("#tbl th").forEach(th=>{
 $("file").addEventListener("change", e=>{
   const f=e.target.files[0]; if(!f)return;
   const fr=new FileReader();
-  fr.onload=()=>{ try{ DATA=JSON.parse(fr.result); selIndex=0; render(); }catch(err){ alert("Could not parse JSON: "+err);} };
+  fr.onload=()=>{ try{ DATA=JSON.parse(fr.result); selectRun(0); }catch(err){ alert("Could not parse JSON: "+err);} };
   fr.readAsText(f);
 });
 
@@ -818,7 +828,7 @@ $("chart-grids")?.addEventListener("click", e=>{
 setupBetspread();
 setupStrategy();
 setupStrategyChart();
-if(DATA && DATA.results){ render(); }
+if(DATA && DATA.results){ selectRun(0); }
 else {
   document.querySelector(".wrap").insertAdjacentHTML("beforeend",
     `<div class="card" style="margin-top:18px"><h2>No data loaded</h2>

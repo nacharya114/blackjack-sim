@@ -118,8 +118,10 @@ def _play_player(shoe: Shoe, c0, c1, base_bet, up_value, rules, strategy):
 
 
 def play_round(shoe: Shoe, rules: Rules, strategy, paytables=None) -> RoundResult:
-    # Reshuffle at the cut card, or if too few cards remain to safely finish a round.
-    if shoe.needs_shuffle() or shoe.cards_remaining < 20:
+    # A continuous shuffle machine reshuffles every round (a full N-deck stack), so
+    # the count never builds. Otherwise reshuffle at the cut card, or if too few
+    # cards remain to safely finish a round.
+    if rules.csm or shoe.needs_shuffle() or shoe.cards_remaining < 20:
         shoe.shuffle()
 
     tc_start = shoe.true_count()

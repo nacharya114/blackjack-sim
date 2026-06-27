@@ -260,6 +260,7 @@ cdef struct Rules:
     int hit_split_aces
     int late_surr
     int early_surr
+    int csm
 
 
 cdef struct Strat:
@@ -486,7 +487,7 @@ cdef inline double counter_bet(double tc, Strat* st) noexcept nogil:
 
 # --- one round ----------------------------------------------------------------
 cdef void play_round_c(Shoe* sh, RNG* rng, Rules* ru, Strat* st, Stats* acc) noexcept nogil:
-    if needs_shuffle(sh) or cards_remaining(sh) < 20:
+    if ru.csm or needs_shuffle(sh) or cards_remaining(sh) < 20:
         shoe_shuffle(sh, rng)
 
     cdef double tc_start = true_count(sh)
@@ -800,6 +801,7 @@ def simulate_chunk(tuple rules_t, tuple strat_t, long n_rounds,
     ru.hit_split_aces = rules_t[11]
     ru.late_surr = rules_t[12]
     ru.early_surr = rules_t[13]
+    ru.csm = rules_t[14]
 
     cdef Strat st
     st.is_counter = strat_t[0]
