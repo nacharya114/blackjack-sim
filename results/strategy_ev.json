@@ -1,5 +1,5 @@
 {
-  "generated": "2026-06-26 22:58",
+  "generated": "2026-06-26 23:45",
   "h17": false,
   "tc_grid": [
     -6.0,
@@ -1751,7 +1751,7 @@
       "basic_action": "stand",
       "deviate": "H",
       "deviate_action": "hit",
-      "index": 0,
+      "index": -1,
       "direction": "<=",
       "crossover": -0.17,
       "ev": {
@@ -2508,7 +2508,7 @@
       "up": 4,
       "basic": "S",
       "deviate": "H",
-      "index": 0,
+      "index": -1,
       "direction": "<="
     },
     {

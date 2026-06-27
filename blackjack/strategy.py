@@ -176,8 +176,10 @@ ILLUSTRIOUS_18 = [
     (16, False, 9,  "S", 5, ">="),
     # 13v2 and 12v4 are stand-by-basic hands whose index play is to HIT at deeply
     # negative counts (like 12v5/12v6/13v3 below), so they use direction "<=".
+    # 12v4: stand at TC >= 0 (basic), hit only at TC <= -1 (the index is 0, but
+    # for integer counts the switch to hitting happens below neutral).
     (13, False, 2,  "H", -1, "<="),
-    (12, False, 4,  "H", 0,  "<="),
+    (12, False, 4,  "H", -1, "<="),
     (12, False, 5,  "H", -2, "<="),
     (12, False, 6,  "H", -1, "<="),
     (13, False, 3,  "H", -2, "<="),
@@ -194,9 +196,17 @@ def counter_action(cards, up: int, true_count: float, *, can_double: bool,
             if t == total and s == soft and u == up:
                 hit = true_count >= thr if direction == ">=" else true_count <= thr
                 if hit:
+                    # A "stand" index play must not override an available
+                    # surrender: surrendering (-0.5) beats standing on these
+                    # stiff totals (16v10, 15v10, 16v9) at every count, so under
+                    # surrender these hands just surrender -- no deviation.
+                    if act == "S" and can_surrender and \
+                            should_surrender(cards, up, is_pair, rules):
+                        break
                     if act == "D":
                         return "D" if can_double else "H"
                     return act
+                break  # the table has at most one entry per (total, soft, up)
     return basic_action(cards, up, can_double=can_double, can_split=can_split,
                         can_surrender=can_surrender, rules=rules)
 

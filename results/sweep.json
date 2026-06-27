@@ -1,5 +1,5 @@
 {
-  "generated": "2026-06-26 22:55",
+  "generated": "2026-06-26 23:45",
   "rounds_each": 100000000,
   "cores": 10,
   "dollars_per_unit": 10.0,
@@ -53,7 +53,7 @@
         "ci95_hour_dollars": 0.22360524758535116
       },
       "label": "6D S17 DAS LS 3:2",
-      "wall_seconds": 1.0,
+      "wall_seconds": 0.9,
       "cores": 10
     },
     {
@@ -292,28 +292,28 @@
       "dollars_per_unit": 10.0,
       "hands_per_hour": 100,
       "main": {
-        "ev_per_round_units": 0.018789305,
-        "house_edge": -0.010348404223928739,
-        "element_of_risk": -0.00900350326859623,
-        "std_per_round_units": 3.4717169181898746,
-        "avg_wager_units": 2.08688823,
-        "avg_initial_units": 1.81567173
+        "ev_per_round_units": 0.02115381,
+        "house_edge": -0.011639893671141922,
+        "element_of_risk": -0.01012695443921553,
+        "std_per_round_units": 3.437184987670127,
+        "avg_wager_units": 2.08886197,
+        "avg_initial_units": 1.81735423
       },
       "side_bets": {},
       "total": {
-        "ev_per_round_units": 0.018789305,
-        "house_edge": -0.00900350326859623,
-        "std_per_round_units": 3.4717169181898746
+        "ev_per_round_units": 0.02115381,
+        "house_edge": -0.01012695443921553,
+        "std_per_round_units": 3.437184987670127
       },
       "hourly": {
-        "ev_units": 1.8789304999999998,
-        "ev_dollars": 18.789305,
-        "std_dollars": 347.1716918189875,
-        "ci95_round_units": 0.0006804565159652154,
-        "ci95_hour_dollars": 0.6804565159652154
+        "ev_units": 2.1153809999999997,
+        "ev_dollars": 21.153809999999996,
+        "std_dollars": 343.7184987670127,
+        "ci95_round_units": 0.0006736882575833448,
+        "ci95_hour_dollars": 0.6736882575833448
       },
       "label": "6D S17 DAS LS 3:2 (deep)",
-      "wall_seconds": 1.1,
+      "wall_seconds": 1.2,
       "cores": 10
     },
     {

@@ -447,9 +447,15 @@ cdef inline char decide(int* cards, int n, int up, int can_double, int can_split
                         hit = 1 if tc <= dev_thr[i] else 0
                     if hit:
                         a = dev_act[i]
+                        # a "stand" deviation must not override an available
+                        # surrender (surrender beats standing on 16v10/15v10/16v9)
+                        if a == b'S' and can_surrender and \
+                                should_surrender(cards, n, up, 0, ru):
+                            break
                         if a == b'D':
                             return b'D' if can_double else b'H'
                         return a
+                    break
     elif st.is_counter:
         # >2 cards: deviations are 2-card situations; fall through to basic
         pass

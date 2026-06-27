@@ -1,11 +1,11 @@
 {
-  "generated": "2026-06-26 22:58",
+  "generated": "2026-06-26 23:45",
   "rules_name": "6D S17 DAS noLS 3:2",
   "penetration": 0.75,
   "rounds_each": 100000000,
   "top_tc": 5,
   "dollars_per_unit": 10.0,
-  "breakeven_top": 3.681197171307873,
+  "breakeven_top": 3.699149750786196,
   "results": [
     {
       "top": 1,
@@ -16,12 +16,12 @@
         "4": 1,
         "5": 1
       },
-      "total_house_edge": 0.0033518053910372623,
-      "ev_per_round_units": -0.003814575,
-      "std_per_round_units": 1.1569384944337517,
-      "ci95_round_units": 0.00022675994490901533,
-      "hourly_ev_dollars": -3.814575,
-      "hourly_std_dollars": 115.69384944337517,
+      "total_house_edge": 0.0033709346799187766,
+      "ev_per_round_units": -0.003836315,
+      "std_per_round_units": 1.157012583584985,
+      "ci95_round_units": 0.00022677446638265703,
+      "hourly_ev_dollars": -3.836315,
+      "hourly_std_dollars": 115.70125835849849,
       "n0_rounds": null
     },
     {
@@ -33,12 +33,12 @@
         "4": 2,
         "5": 2
       },
-      "total_house_edge": 0.0017135658522537233,
-      "ev_per_round_units": -0.00211534,
-      "std_per_round_units": 1.2894061896711864,
-      "ci95_round_units": 0.0002527236131755525,
-      "hourly_ev_dollars": -2.1153399999999998,
-      "hourly_std_dollars": 128.94061896711864,
+      "total_house_edge": 0.00173149284725382,
+      "ev_per_round_units": -0.002137425,
+      "std_per_round_units": 1.2894476125617205,
+      "ci95_round_units": 0.0002527317320620972,
+      "hourly_ev_dollars": -2.137425,
+      "hourly_std_dollars": 128.94476125617206,
       "n0_rounds": null
     },
     {
@@ -50,12 +50,12 @@
         "4": 2,
         "5": 3
       },
-      "total_house_edge": 0.0006018848032884773,
-      "ev_per_round_units": -0.000804385,
-      "std_per_round_units": 1.4427446330795664,
-      "ci95_round_units": 0.000282777948083595,
-      "hourly_ev_dollars": -0.8043849999999999,
-      "hourly_std_dollars": 144.27446330795664,
+      "total_house_edge": 0.000618896824146281,
+      "ev_per_round_units": -0.000827095,
+      "std_per_round_units": 1.4427534904581716,
+      "ci95_round_units": 0.0002827796841298016,
+      "hourly_ev_dollars": -0.827095,
+      "hourly_std_dollars": 144.27534904581717,
       "n0_rounds": null
     },
     {
@@ -67,13 +67,13 @@
         "4": 3,
         "5": 4
       },
-      "total_house_edge": -0.0002816843432669629,
-      "ev_per_round_units": 0.000391635,
-      "std_per_round_units": 1.5647737931110672,
-      "ci95_round_units": 0.0003066956634497692,
-      "hourly_ev_dollars": 0.39163499999999996,
-      "hourly_std_dollars": 156.47737931110672,
-      "n0_rounds": 15963941.706383811
+      "total_house_edge": -0.0002663167133688645,
+      "ev_per_round_units": 0.000370255,
+      "std_per_round_units": 1.5647566535713688,
+      "ci95_round_units": 0.0003066923040999883,
+      "hourly_ev_dollars": 0.370255,
+      "hourly_std_dollars": 156.47566535713688,
+      "n0_rounds": 17860423.386623684
     },
     {
       "top": 5,
@@ -84,13 +84,13 @@
         "4": 4,
         "5": 5
       },
-      "total_house_edge": -0.0014063512916703716,
-      "ev_per_round_units": 0.00209087,
-      "std_per_round_units": 1.7818058564307628,
-      "ci95_round_units": 0.0003492339478604295,
-      "hourly_ev_dollars": 2.09087,
-      "hourly_std_dollars": 178.18058564307626,
-      "n0_rounds": 726217.4853665589
+      "total_house_edge": -0.001391803551110437,
+      "ev_per_round_units": 0.002069145,
+      "std_per_round_units": 1.7817499453866408,
+      "ci95_round_units": 0.00034922298929578163,
+      "hourly_ev_dollars": 2.069145,
+      "hourly_std_dollars": 178.17499453866407,
+      "n0_rounds": 741500.8556578697
     },
     {
       "top": 6,
@@ -101,13 +101,13 @@
         "4": 5,
         "5": 6
       },
-      "total_house_edge": -0.002394050813369337,
-      "ev_per_round_units": 0.003790105,
-      "std_per_round_units": 2.0290825017174257,
-      "ci95_round_units": 0.00039770017033661544,
-      "hourly_ev_dollars": 3.7901050000000005,
-      "hourly_std_dollars": 202.90825017174257,
-      "n0_rounds": 286613.68827712355
+      "total_house_edge": -0.002380239997091687,
+      "ev_per_round_units": 0.003768035,
+      "std_per_round_units": 2.028986897587098,
+      "ci95_round_units": 0.0003976814319270712,
+      "hourly_ev_dollars": 3.7680350000000002,
+      "hourly_std_dollars": 202.8986897587098,
+      "n0_rounds": 289953.68248272635
     },
     {
       "top": 8,
@@ -118,13 +118,13 @@
         "4": 6,
         "5": 8
       },
-      "total_house_edge": -0.003621090728711473,
-      "ev_per_round_units": 0.00629708,
-      "std_per_round_units": 2.4006238135979197,
-      "ci95_round_units": 0.00047052226746519227,
-      "hourly_ev_dollars": 6.29708,
-      "hourly_std_dollars": 240.06238135979197,
-      "n0_rounds": 145334.86055479458
+      "total_house_edge": -0.0036090381043054087,
+      "ev_per_round_units": 0.006275715,
+      "std_per_round_units": 2.4004739158182886,
+      "ci95_round_units": 0.0004704928875003845,
+      "hourly_ev_dollars": 6.275715000000001,
+      "hourly_std_dollars": 240.04739158182886,
+      "n0_rounds": 146307.82594634616
     }
   ]
 }
