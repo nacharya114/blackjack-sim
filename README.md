@@ -125,7 +125,32 @@ for a given seed. Full details: [`docs/fast_engine.md`](docs/fast_engine.md).
 ## The dashboard
 
 `results/dashboard.html` is one self-contained file with the sweep data inlined,
-so it opens straight from disk — no local server, no CORS issues. It gives you:
+so it opens straight from disk — no local server, no CORS issues. It opens on a
+**Play** tab and a second **Analysis** tab:
+
+### Play tab (the entry point)
+
+A fully playable **practice table** that runs entirely in the browser: deal and
+play a complete shoe with hit / stand / double / split / surrender / insurance.
+
+- **Configurable rules** right on the table — decks (1/2/4/6/8), dealer **stands
+  or hits soft 17** (S17/H17), **late surrender on/off**, double-after-split,
+  blackjack **3:2 or 6:5**, and penetration. Changing a rule reshuffles a fresh
+  shoe and starts a new session; all payouts and dealer play honour the choice.
+
+- The **deck bar** shows approximate decks remaining with the cut card marked; the
+  shoe ends when the cut card is reached.
+- A **Peek count** toggle reveals the live Hi-Lo running count, true count, and
+  decks remaining (hidden by default, so you can practise keeping the count).
+- A **realized-EV scoreboard** tracks hands played, total wagered, net result,
+  your **realized house edge** (−net ÷ original wager) and element of risk — over a
+  long session this converges on the engine's ~+0.5% basic-strategy edge.
+- A **basic-strategy coach** (driven by the inlined strategy chart) flags any play
+  that deviates from basic strategy and tallies your mistakes and EV given up.
+
+A richer 3-D shoe / discard-tray visualizer is noted as a future enhancement.
+
+### Analysis tab
 
 - A **sortable table** of every run (house edge, element of risk, EV/round,
   hourly EV, hourly σ).
