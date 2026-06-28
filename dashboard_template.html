@@ -66,6 +66,10 @@
   tbody tr{cursor:pointer}
   tbody tr:hover{background:rgba(201,162,39,.08)}
   tbody tr.sel{background:rgba(201,162,39,.16); box-shadow:inset 3px 0 0 var(--brass)}
+  #tbl td.hecell{cursor:pointer}
+  #tbl td.hecell:hover{background:rgba(201,162,39,.14)}
+  #tbl td.selcell{box-shadow:inset 0 0 0 2px var(--brass)}
+  #tbl td.empty{color:var(--muted); opacity:.45; text-align:center}
   .pos{color:var(--good)} .neg{color:var(--bad)}
   .sub{color:var(--muted)}
 
@@ -281,18 +285,16 @@
         <table id="tbl">
           <thead><tr>
             <th data-k="label">Configuration</th>
-            <th data-k="strategy">Strategy</th>
-            <th data-k="he">House edge</th>
-            <th data-k="eor">Elem of risk</th>
-            <th data-k="evround">EV / round</th>
-            <th data-k="hourly">Hourly EV</th>
-            <th data-k="sigma">Hourly &sigma;</th>
+            <th data-k="b_he">Basic &middot; House edge</th>
+            <th data-k="b_hourly">Basic &middot; Hourly EV</th>
+            <th data-k="c_he">Counter &middot; House edge</th>
+            <th data-k="c_hourly">Counter &middot; Hourly EV</th>
             <th data-k="rounds">Rounds</th>
           </tr></thead>
           <tbody></tbody>
         </table>
       </div>
-      <div class="note">House edge is per original wager (positive = casino advantage, negative = player advantage). Hourly figures use the controls above.</div>
+      <div class="note">Each core rule variant pairs <b>basic strategy</b> with a <b>Hi-Lo counter</b> (1&ndash;8 bet spread) on the identical game, so the counting edge reads off directly. Click either <b>House edge</b> cell to inspect that run in the panels below. House edge is per original wager (positive = casino advantage, negative = player advantage); Hourly EV is the expected yield at the stakes set above.</div>
     </div>
 
     <div class="card">
@@ -415,7 +417,7 @@ const STRATEGY_CHART_DATA = /*__STRATEGY_CHART_DATA__*/ null;
 
 let DATA = SWEEP_DATA;
 let selIndex = 0;
-let sortKey = "he", sortDir = 1;
+let sortKey = "b_he", sortDir = 1;
 
 const $ = id => document.getElementById(id);
 const fmtPct = x => (x*100>=0?"+":"") + (x*100).toFixed(3) + "%";
@@ -453,37 +455,67 @@ function render(){
     ? `<b>${DATA.results.length}</b> runs &middot; <b>${(DATA.rounds_each||0).toLocaleString()}</b> rounds each<br>generated ${DATA.generated}`
     : `${DATA.results.length} runs`;
 
-  const rows = DATA.results.map((r,i)=>({i, m:rowMetrics(r)}));
-  rows.sort((a,b)=>{
-    const va=a.m[sortKey], vb=b.m[sortKey];
-    const c = (typeof va==="string") ? va.localeCompare(vb) : (va-vb);
-    return c*sortDir;
-  });
+  // Per-run metrics (drive the charts and the selected-run detail panels).
+  const flat = DATA.results.map((r,i)=>({i, r, m:rowMetrics(r)}));
+
+  // Group runs by `variant` so basic + counter on the same game share one row.
+  const order=[], groups=new Map();
+  for(const f of flat){
+    const v = f.r.variant || f.m.label;
+    if(!groups.has(v)){ groups.set(v, {variant:v, label:f.m.label, basic:null, counter:null}); order.push(v); }
+    const g=groups.get(v);
+    if(f.r.strategy==="counter") g.counter=f; else g.basic=f;   // basic (or window) -> basic slot
+  }
+  const grouped = order.map(v=>groups.get(v));
+
+  // sort by the chosen column; rows missing a strategy sink to the bottom
+  const sval = g => {
+    switch(sortKey){
+      case "b_he":     return g.basic   ? g.basic.m.he       :  Infinity;
+      case "b_hourly": return g.basic   ? g.basic.m.hourly   : -Infinity;
+      case "c_he":     return g.counter ? g.counter.m.he     :  Infinity;
+      case "c_hourly": return g.counter ? g.counter.m.hourly : -Infinity;
+      case "rounds":   return (g.basic||g.counter).m.rounds;
+      default:         return g.label;          // "label"
+    }
+  };
+  grouped.sort((a,b)=>{ const va=sval(a), vb=sval(b);
+    const c=(typeof va==="string")?va.localeCompare(vb):(va-vb); return c*sortDir; });
 
   // table
   const tb = $("tbl").querySelector("tbody");
   tb.innerHTML = "";
-  for(const {i,m} of rows){
+  const heCell = c => c
+    ? `<td class="hecell ${cls(-c.m.he)} ${c.i===selIndex?'selcell':''}" data-i="${c.i}">${fmtPct(c.m.he)}</td>`
+    : `<td class="empty">&mdash;</td>`;
+  const hrCell = c => c
+    ? `<td class="${cls(c.m.hourly)}">${fmtMoney(c.m.hourly)}</td>`
+    : `<td class="empty">&mdash;</td>`;
+  for(const g of grouped){
     const tr = document.createElement("tr");
-    if(i===selIndex) tr.className="sel";
+    if((g.basic&&g.basic.i===selIndex)||(g.counter&&g.counter.i===selIndex)) tr.className="sel";
     tr.innerHTML =
-      `<td>${m.label}</td>`+
-      `<td class="sub">${m.strategy}</td>`+
-      `<td class="${cls(-m.he)}">${fmtPct(m.he)}</td>`+
-      `<td class="sub">${fmtPct(m.eor)}</td>`+
-      `<td class="${cls(m.evround)}">${m.evround.toFixed(5)}</td>`+
-      `<td class="${cls(m.hourly)}">${fmtMoney(m.hourly)}</td>`+
-      `<td class="sub">$${m.sigma.toFixed(0)}</td>`+
-      `<td class="sub">${(m.rounds/1e6).toFixed(1)}M</td>`;
-    tr.onclick = ()=>selectRun(i);
+      `<td>${g.label}</td>`+
+      heCell(g.basic)+ hrCell(g.basic)+
+      heCell(g.counter)+ hrCell(g.counter)+
+      `<td class="sub">${((g.basic||g.counter).m.rounds/1e6).toFixed(1)}M</td>`;
+    tr.onclick = ()=>selectRun((g.counter||g.basic).i);             // row -> best available
+    tr.querySelectorAll("td.hecell").forEach(td=>                    // cell -> that exact run
+      td.onclick=(e)=>{ e.stopPropagation(); selectRun(+td.dataset.i); });
     tb.appendChild(tr);
   }
   document.querySelectorAll("#tbl th").forEach(th=>{
     th.classList.toggle("sorted", th.dataset.k===sortKey);
   });
 
-  drawBars("chart-he", rows.map(({m})=>({label:m.label, val:m.he*100})), "%", true);
-  drawBars("chart-ev", rows.map(({m})=>({label:m.label, val:m.hourly})), "$", false);
+  // charts: one bar per run, tagged with strategy where a variant has both
+  const chartItems = flat.map(f=>{
+    const paired = groups.get(f.r.variant||f.m.label).basic && groups.get(f.r.variant||f.m.label).counter;
+    const tag = f.r.strategy==="counter" ? " · counter" : (paired ? " · basic" : "");
+    return {label: f.m.label+tag, he:f.m.he, hourly:f.m.hourly};
+  });
+  drawBars("chart-he", chartItems.map(c=>({label:c.label, val:c.he*100})), "%", true);
+  drawBars("chart-ev", chartItems.map(c=>({label:c.label, val:c.hourly})), "$", false);
   renderSelected();
   drawSim();
 }
@@ -795,7 +827,8 @@ function fmtTc(x){ return x==null?"n/a":(x>=0?"+":"")+(+x).toFixed(2).replace(/\
 
 // events
 document.querySelectorAll("#tbl th").forEach(th=>{
-  th.onclick=()=>{ const k=th.dataset.k; if(k===sortKey)sortDir*=-1; else {sortKey=k; sortDir = (k==="he"?1:-1);} render(); };
+  th.onclick=()=>{ const k=th.dataset.k; if(k===sortKey)sortDir*=-1;
+    else { sortKey=k; sortDir = (k==="b_hourly"||k==="c_hourly") ? -1 : 1; } render(); };
 });
 ["dpu","hph","hrs","bank"].forEach(id=>$(id).addEventListener("input", render));
 $("file").addEventListener("change", e=>{
