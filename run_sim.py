@@ -134,10 +134,13 @@ def cmd_single(args):
 
 
 def build_sweep_matrix(hands_per_hour=100):
-    """Return the list of (strategy, label, Rules, strategy_kwargs) for the sweep.
+    """Return the list of (strategy, label, Rules, strategy_kwargs, variant) for the sweep.
 
     Shared by `cmd_sweep` and any external chunked runner so the matrix is
-    defined in exactly one place.
+    defined in exactly one place. Runs that share a `variant` key are paired in
+    the dashboard's table (one row, side-by-side strategy columns); each of the
+    core rule variants runs *both* basic strategy and a Hi-Lo counter on the
+    identical game so the counting edge can be read off directly.
     """
     hph = hands_per_hour or 100
     rulesets = {
@@ -157,6 +160,11 @@ def build_sweep_matrix(hands_per_hour=100):
                                   late_surrender=False, blackjack_payout=1.2, penetration=0.75,
                                   hands_per_hour=hph),
     }
+    # Standard 1-8 Hi-Lo bet spread: flat 1 unit through neutral/negative counts,
+    # ramping to 8 units at true count +5. Each rule variant's counter plays its
+    # own identical game (same decks/penetration), so basic vs counter is a true
+    # apples-to-apples comparison of the counting edge on that exact table.
+    counter_ramp = {1: 1, 2: 2, 3: 4, 4: 6, 5: 8}
     counter_rules = Rules(decks=6, dealer_hits_soft_17=False, double_after_split=True,
                           late_surrender=True, blackjack_payout=1.5, penetration=0.85,
                           hands_per_hour=hph)
@@ -167,18 +175,27 @@ def build_sweep_matrix(hands_per_hour=100):
                       late_surrender=True, blackjack_payout=1.5, hands_per_hour=int(hph * 1.3))
 
     runs = []
+    # Core rule variants: basic + counter on the same game, merged into one row.
     for name, r in rulesets.items():
-        runs.append(("basic", name, r, {}))
-    runs.append(("counter", "6D S17 DAS LS 3:2 (deep)", counter_rules, {}))
-    runs.append(("basic", "6D CSM S17 DAS LS 3:2", csm_rules, {}))
-    runs.append(("counter", "6D CSM S17 DAS LS 3:2 (counter)", csm_rules, {}))
+        runs.append(("basic", name, r, {}, name))
+        runs.append(("counter", name, r, {"bet_ramp": dict(counter_ramp)}, name))
+    # Showcase rows below stay single-strategy (each gets its own variant key).
+    runs.append(("counter", "6D S17 DAS LS 3:2 (deep)", counter_rules, {},
+                 "6D S17 DAS LS 3:2 (deep)"))
+    runs.append(("basic", "6D CSM S17 DAS LS 3:2", csm_rules, {},
+                 "6D CSM S17 DAS LS 3:2"))
+    runs.append(("counter", "6D CSM S17 DAS LS 3:2 (counter)", csm_rules, {},
+                 "6D CSM S17 DAS LS 3:2 (counter)"))
     main = rulesets["6D S17 DAS LS 3:2"]
     runs.append(("basic", "6D S17 + Perfect Pairs", main,
-                 {"side_bets": ("perfect_pairs",), "side_bet_unit": 1.0}))
+                 {"side_bets": ("perfect_pairs",), "side_bet_unit": 1.0},
+                 "6D S17 + Perfect Pairs"))
     runs.append(("basic", "6D S17 + 21+3", main,
-                 {"side_bets": ("21+3",), "side_bet_unit": 1.0}))
+                 {"side_bets": ("21+3",), "side_bet_unit": 1.0},
+                 "6D S17 + 21+3"))
     runs.append(("basic", "6D S17 + both sidebets", main,
-                 {"side_bets": ("perfect_pairs", "21+3"), "side_bet_unit": 1.0}))
+                 {"side_bets": ("perfect_pairs", "21+3"), "side_bet_unit": 1.0},
+                 "6D S17 + both sidebets"))
     return runs
 
 
@@ -192,12 +209,13 @@ def cmd_sweep(args):
     print(f"  Sweep: {total} configs x {args.rounds:,} rounds on {cores} core(s) "
           f"[{args.engine} engine]\n")
     sweep_start = time.time()
-    for idx, (strat, label, r, kw) in enumerate(runs, 1):
+    for idx, (strat, label, r, kw, variant) in enumerate(runs, 1):
         t = time.time()
         res = run_simulation(r, strat, rounds=args.rounds, strategy_kwargs=kw,
                              cores=cores, dollars_per_unit=args.dollars_per_unit,
                              seed=args.seed, engine=args.engine)
         res["label"] = label
+        res["variant"] = variant
         res["wall_seconds"] = round(time.time() - t, 1)
         res["cores"] = cores
         results.append(res)

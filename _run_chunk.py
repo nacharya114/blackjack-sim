@@ -22,12 +22,13 @@ runs = build_sweep_matrix(100)[a.start:a.end]
 acc = []
 if os.path.exists(a.out):
     acc = json.load(open(a.out))
-for i, (strat, label, r, kw) in enumerate(runs, a.start):
+for i, (strat, label, r, kw, variant) in enumerate(runs, a.start):
     t = time.time()
     res = run_simulation(r, strat, rounds=a.rounds, strategy_kwargs=kw,
                          cores=max(1, a.cores), dollars_per_unit=a.dollars_per_unit,
                          seed=a.seed)
     res["label"] = label
+    res["variant"] = variant
     res["wall_seconds"] = round(time.time() - t, 1)
     res["cores"] = max(1, a.cores)
     acc.append(res)
