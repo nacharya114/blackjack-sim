@@ -182,6 +182,10 @@
   .pg-msg{font-family:var(--mono); font-size:13px; min-height:20px; margin-bottom:4px}
   .pg-score{margin-top:8px; max-width:480px}
   .pg-mv:disabled{opacity:.35; cursor:default}
+  .stat .hint{display:inline-block; margin-left:5px; width:13px; height:13px; line-height:12px;
+    text-align:center; font-size:10px; border-radius:50%; border:1px solid var(--line);
+    color:var(--muted); cursor:help; vertical-align:middle}
+  .stat[title]{cursor:help}
 </style>
 </head>
 <body>
@@ -965,7 +969,7 @@ function pgInit(){
   PG={shoe:[], pos:0, cut:0, rc:0, shoeDone:false, peek:false,
       state:"betting", dealer:[], hands:[], active:0, holeShown:false,
       bet:1, insurance:0, lastRoundNet:null, coachMsg:"", coachBad:false,
-      stats:{shoes:0, hands:0, decisions:0, mistakes:0, wagered:0, action:0, net:0, evlost:0}};
+      stats:{shoes:0, hands:0, decisions:0, mistakes:0, wagered:0, action:0, net:0, evlost:0, exp:0}};
   pgNewShoe();
 }
 function pgNewShoe(){
@@ -992,7 +996,7 @@ function pgReadRules(){                            // pull the table rules from 
 }
 function pgApplyRules(){                           // a rule changed -> fresh shoe + fresh session
   pgReadRules();
-  PG.stats={shoes:0, hands:0, decisions:0, mistakes:0, wagered:0, action:0, net:0, evlost:0};
+  PG.stats={shoes:0, hands:0, decisions:0, mistakes:0, wagered:0, action:0, net:0, evlost:0, exp:0};
   PG.coachMsg=""; PG.coachBad=false; PG.lastRoundNet=null;
   pgNewShoe();
   pgRender();
@@ -1000,6 +1004,20 @@ function pgApplyRules(){                           // a rule changed -> fresh sh
 function pgDraw(count){ const c=PG.shoe[PG.pos++]; if(count) PG.rc+=pgHiLo(c.r); return c; }
 function pgDecksLeft(){ return (PG.shoe.length-PG.pos)/52; }
 function pgTrueCount(){ const d=pgDecksLeft(); return d>0 ? PG.rc/d : 0; }
+// Approximate flat-bet basic-strategy house edge for the current rules at a neutral count
+// (fraction; positive = casino advantage). Rule deltas are the usual published estimates.
+function pgBaseEdge(){
+  let e = 0.40;                              // 6-deck S17 DAS no-surrender 3:2 baseline (%)
+  if(PG_RULES.h17) e += 0.21;               // H17 helps the house
+  if(!PG_RULES.das) e += 0.14;              // losing DAS helps the house
+  if(PG_RULES.ls)  e -= 0.07;               // late surrender helps the player
+  if(PG_RULES.bjPay===1.2) e += 1.39;       // 6:5 naturals are brutal
+  e += ({1:-0.38, 2:-0.19, 4:-0.04, 6:0, 8:0.02}[PG_RULES.decks] ?? 0);
+  return e/100;
+}
+// Count-adjusted house edge of the shoe as dealt so far. Hi-Lo is worth roughly
+// +0.5% to the player per +1 true count, so the edge drops as the count climbs.
+function pgShoeEdge(){ return pgBaseEdge() - 0.005*pgTrueCount(); }
 function pgRevealHole(){ if(!PG.holeShown){ PG.holeShown=true; PG.rc+=pgHiLo(PG.dealer[1].r); } }
 function pgActiveHand(){ return PG.hands[PG.active]; }
 const pgCanDouble    = h => h.cards.length===2 && !h.done && (PG_RULES.das || !h.split);
@@ -1012,6 +1030,7 @@ function pgDeal(){
   const bet=Math.max(1, Math.round(+$("pg-bet").value)||1);
   PG.bet=bet; PG.dealer=[]; PG.insurance=0; PG.holeShown=false;
   PG.coachMsg=""; PG.coachBad=false;
+  const sEdge=pgShoeEdge();               // count-based edge BEFORE this round's cards are seen
   const p=[pgDraw(true)];                 // player 1
   const up=pgDraw(true);                  // dealer up
   p.push(pgDraw(true));                    // player 2
@@ -1021,6 +1040,7 @@ function pgDeal(){
              blackjack:pgIsBJ(p)}];
   PG.active=0;
   PG.stats.hands++; PG.stats.wagered+=bet; PG.stats.action+=bet;
+  PG.stats.exp += -sEdge*bet;             // theoretical expected player net for this hand
   if(up.r===14){ PG.state="insurance"; pgRender(); return; }   // offer insurance
   pgAfterInsurance();
 }
@@ -1201,10 +1221,12 @@ function pgRender(){
   // count peek
   const cp=$("pg-count");
   if(PG.peek){
-    cp.style.display=""; const tc=pgTrueCount();
+    cp.style.display=""; const tc=pgTrueCount(); const se=pgShoeEdge();
     cp.innerHTML=`<span class="chip">Running ${PG.rc>=0?"+":""}${PG.rc}</span>`
       + `<span class="chip">True ${tc>=0?"+":""}${tc.toFixed(1)}</span>`
-      + `<span class="chip">${pgDecksLeft().toFixed(1)} decks</span>`;
+      + `<span class="chip">${pgDecksLeft().toFixed(1)} decks</span>`
+      + `<span class="chip" title="Approximate basic-strategy house edge of the shoe at this count: base ${(pgBaseEdge()*100).toFixed(2)}% for these rules, shifted ~0.5% per true count. Negative = the player is ahead.">`
+      + `Shoe edge <b class="${se>0?'neg':(se<0?'pos':'')}">${se>=0?'+':''}${(se*100).toFixed(2)}%</b></span>`;
   } else cp.style.display="none";
   // felt
   let felt="";
@@ -1275,9 +1297,14 @@ function pgRender(){
     + `<div class="stat"><span class="k">Total wagered (original)</span><span class="v">${fU(s.wagered)} u</span></div>`
     + `<div class="stat"><span class="k">Net result</span>`
     + `<span class="v ${cls(s.net)}">${s.net>=0?"+":""}${fU(s.net)} u</span></div>`
-    + `<div class="stat"><span class="k">Realized house edge</span>`
+    + `<div class="stat" title="Theoretical expected result given the Hi-Lo count before each hand: the sum of (shoe edge x original bet) over every hand, from the player's side. The shoe edge is an approximate basic-strategy edge for these rules shifted ~0.5% per true count. Compare it with Net result above - the gap between them is variance (luck), which washes out over many hands.">`
+    + `<span class="k">Expected net (theoretical)<span class="hint">?</span></span>`
+    + `<span class="v ${cls(s.exp)}">${s.exp>=0?"+":""}${fU(s.exp)} u</span></div>`
+    + `<div class="stat" title="Realized house edge = -(net result) / total original wager. Positive = the house came out ahead. This is what actually happened to your main bets so far - dominated by luck early on, it converges toward the table's true edge only over thousands of hands. Compare against Expected net above.">`
+    + `<span class="k">Realized house edge<span class="hint">?</span></span>`
     + `<span class="v ${reEdge>0?"neg":(reEdge<0?"pos":"")}">${reEdge*100>=0?"+":""}${(reEdge*100).toFixed(2)}%</span></div>`
-    + `<div class="stat"><span class="k">Element of risk (per unit at risk)</span>`
+    + `<div class="stat" title="Element of risk = -(net result) / total money actually put at risk - your original bets PLUS the extra chips from doubles, splits, and insurance. House edge is measured per hand (per original bet); element of risk is measured per unit wagered, so when you double and split it spreads the same net over a larger denominator and reads as a smaller magnitude.">`
+    + `<span class="k">Element of risk (per unit at risk)<span class="hint">?</span></span>`
     + `<span class="v ${eor>0?"neg":(eor<0?"pos":"")}">${eor*100>=0?"+":""}${(eor*100).toFixed(2)}%</span></div>`;
   if(STRATEGY_CHART_DATA)
     sc+=`<div class="stat"><span class="k">Basic-strategy mistakes</span>`
@@ -1289,9 +1316,10 @@ function pgRender(){
   const bj = R.bjPay===1.5?"3:2" : R.bjPay===1.2?"6:5" : R.bjPay+"×";
   let note=`<b>${R.decks}-deck shoe &middot; ${R.h17?"H17":"S17"} &middot; ${R.das?"DAS":"no DAS"} &middot; `
     + `${R.ls?"late surrender":"no surrender"} &middot; BJ ${bj}.</b> `
-    + `Realized house edge = &minus;net &divide; total original wager (positive = the house is ahead). `
-    + `The bar shows approximate decks remaining; the red cut card ends the shoe. The Hi-Lo count stays hidden `
-    + `until you <b>Peek</b>. A richer 3-D shoe visualizer is on the roadmap.`;
+    + `Hover the <span class="hint">?</span> markers in the scoreboard for what each figure means. `
+    + `The bar shows approximate decks remaining; the red cut card ends the shoe. The Hi-Lo count &mdash; and the `
+    + `shoe's approximate theoretical edge at that count &mdash; stay hidden until you <b>Peek</b>. `
+    + `A richer 3-D shoe visualizer is on the roadmap.`;
   const chartH17 = STRATEGY_CHART_DATA ? !!STRATEGY_CHART_DATA.h17 : false;
   if(STRATEGY_CHART_DATA && (R.h17!==chartH17 || !R.das || R.decks<4))
     note += ` <span class="sub">The basic-strategy coach follows the standard 6-deck S17/DAS chart, so a few `
