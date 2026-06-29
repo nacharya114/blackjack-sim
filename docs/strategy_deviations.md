@@ -36,6 +36,14 @@ deck** (no simulation, so the curves are smooth and exact for the model):
   natural when the rules peek — i.e. the situations where the player still acts.
 - **Player** EVs: `stand` vs. the dealer distribution; `hit` plays optimally
   thereafter; `double` = 2 × (one card, then stand); `surrender` = −0.5.
+- **Split** (`evcalc.split_ev`, passed `pair=` to `action_evs`): the two hands
+  are independent on the infinite deck, so `split EV = 2 ×` the value of one
+  split-card slot — deal a card, then play it optimally (hit / stand /
+  double-after-split, or one card only for split aces; a two-card 21 is a plain
+  21, not a paid blackjack). Resplits are modelled per lineage up to the
+  ruleset's hand cap (a slight overestimate of the global cap, immaterial in
+  practice). This is what makes "always split 8s / A,A" and "never split T,T /
+  5,5" fall straight out of the EV ordering.
 - **Insurance** is a count-only bet: EV per unit = `3·p(ten) − 1`, which turns
   positive once tens exceed 1/3 of the deck (≈ true count +3).
 
@@ -73,8 +81,8 @@ A second, complementary view renders the **whole chart** as a color-coded grid
   EV gap between the best and second-best action — warmer = closer call) and, on
   click, shows every action's EV at the selected count, drawn from
   `evcalc.action_evs`. These EVs are exact for **hard and soft** totals; pair
-  rows show the hand played as its underlying total, because the **split** action
-  has no EV model yet (roadmap issue #2).
+  rows additionally show a **Split** EV (`evcalc.split_ev`), so the bar chart
+  ranks splitting against the other actions directly.
 
 The EV overlay makes contested cells obvious — e.g. **12 v 4** near neutral, where
 standing and hitting sit within ~0.002 EV of each other (the closest call on the
@@ -98,14 +106,22 @@ offline cross-check that proves it is EV-correct (and a CI guard via
 
 1. checks all **170 hard basic-strategy cells** against the EV-optimal action on
    a neutral deck, under both S17 and H17 (170/170 exact, no mismatches);
-2. **derives** the Hi-Lo index for every borderline hard hand by scanning the
+2. checks all **200 pair/split cells** (10 pairs × 10 upcards × {DAS, noDAS})
+   against the EV-optimal choice among split / stand / hit / double / surrender,
+   with the split EV from `evcalc.split_ev` — 200/200 exact under S17 and H17,
+   so "always split 8s & A,A / never split T,T & 5,5 / 4,4 splits vs 5–6 only
+   with DAS" all fall straight out of the EV math;
+3. **derives** the Hi-Lo index for every borderline hard hand by scanning the
    true count and diffs the result against `ILLUSTRIOUS_18` (all 15 confirmed);
-3. lists derived hard deviations *outside* the Illustrious 18 (e.g. 8v6 double
+4. lists derived hard deviations *outside* the Illustrious 18 (e.g. 8v6 double
    at +1.6, 16v7 stand at +7.7) — confirming the I18 is a sensible curated
    subset rather than the complete set.
 
-It exits non-zero on any disagreement beyond a small EV tie-tolerance. Scope is
-hard totals (soft hands and pairs need the EV-calculator extensions noted above).
+It exits non-zero on any disagreement beyond a small EV tie-tolerance. Hard
+totals and pair/split decisions are now guarded; only **soft** totals remain
+unvalidated — the total-dependent infinite-deck model puts a couple of borderline
+soft doubles (e.g. A,2 v 5) a hair over the tie tolerance, so they need a
+composition-aware EV refinement before they can be guarded too.
 
 > Note: the committed `results/sweep.json` / `betspread_*.json` were generated
 > before that fix; the effect on the counter's overall EV is negligible (these

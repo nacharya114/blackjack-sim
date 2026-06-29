@@ -48,6 +48,46 @@ def test_action_ordering_flips_across_index():
     assert hi["double"] > hi["hit"]
 
 
+def test_split_ev_appears_only_for_pairs():
+    m = EVModel(0.0)
+    plain = m.action_evs(16, 10)
+    assert "split" not in plain
+    paired = m.action_evs(16, 10, pair=8)
+    assert "split" in paired
+    # the standalone helper agrees with the action_evs convenience key
+    assert paired["split"] == pytest.approx(m.split_ev(8, 10), abs=1e-12)
+
+
+def test_always_split_eights_and_aces():
+    """8,8 and A,A are the textbook 'always split' pairs — split must dominate
+    hitting/standing the underlying total against every upcard (no surrender)."""
+    m = EVModel(0.0)
+    for up in (2, 6, 9, 10, 11):
+        e8 = m.action_evs(16, up, pair=8)
+        assert e8["split"] > max(e8["stand"], e8["hit"]), f"8,8 v{up}"
+        ea = m.action_evs(12, up, soft=True, pair=11)
+        assert ea["split"] > max(ea["stand"], ea["hit"], ea["double"]), f"A,A v{up}"
+
+
+def test_never_split_tens_or_fives():
+    m = EVModel(0.0)
+    for up in (5, 6, 9):
+        et = m.action_evs(20, up, pair=10)
+        assert et["stand"] > et["split"]                 # stand on 20, never split
+        ef = m.action_evs(10, up, pair=5)
+        assert ef["double"] > ef["split"]                # double the 10, never split
+
+
+def test_das_and_resplit_aces_raise_split_value():
+    m = EVModel(0.0)
+    # 2,2 v 4 splits only with DAS in basic strategy; DAS must not lower the split EV.
+    assert m.split_ev(2, 4, das=True) > m.split_ev(2, 4, das=False)
+    # Allowing resplit of aces can only add value.
+    assert m.split_ev(11, 6, resplit_aces=True) >= m.split_ev(11, 6, resplit_aces=False)
+    # Split aces take one card unless hit_split_aces; allowing hits/doubles helps.
+    assert m.split_ev(11, 6, hit_split_aces=True) >= m.split_ev(11, 6, hit_split_aces=False)
+
+
 def _col(up):
     return 9 if up == 11 else up - 2
 

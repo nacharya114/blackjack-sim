@@ -402,8 +402,8 @@
         Hi-Lo deviations (outlined, brass) the counter switches to at that count. Only hard totals deviate
         (the Illustrious 18 are hard hands + insurance). With <b>Show action EVs</b> on, each cell is tinted
         by how marginal the decision is (warmer = closer call) and clicking a cell shows every action's EV at
-        the selected count. EVs are exact for hard &amp; soft totals; pair rows show the hand played as its
-        total (the split action's EV is not modelled yet). See <span class="chip">docs/strategy_deviations.md</span>.</div>
+        the selected count. EVs are exact for hard &amp; soft totals; pair rows add a <b>Split</b> EV (two
+        independent hands, DAS &amp; resplits per the ruleset). See <span class="chip">docs/strategy_deviations.md</span>.</div>
     </div>
   </div>
   </section>
@@ -841,7 +841,7 @@ $("file").addEventListener("change", e=>{
 // ---- basic strategy chart panel ----
 const CH_ACT_FULL={S:"Stand",H:"Hit",D:"Double / Hit",V:"Double / Stand",P:"Split",R:"Surrender"};
 const CH_ACT_CELL={S:"S",H:"H",D:"D",V:"Ds",P:"P",R:"R"};
-const CH_EV_COLOR={stand:"#5fcf9a",hit:"#6db3ff",double:"#e2c463",surrender:"#e0705c"};
+const CH_EV_COLOR={stand:"#5fcf9a",hit:"#6db3ff",double:"#e2c463",surrender:"#e0705c",split:"#c3b0ff"};
 let CH={tc:0, ev:false, sel:null};   // sel = {s,r,u} section/row/up indices
 
 function setupStrategyChart(){
@@ -880,9 +880,11 @@ function cellFg(c){return {S:"#5fcf9a",H:"#6db3ff",D:"#e2c463",V:"#e2c463",P:"#c
 function chTcIdx(){ return STRATEGY_CHART_DATA.tc_grid.indexOf(CH.tc); }
 function fmtEv(x){ return (x>=0?"+":"")+x.toFixed(3); }
 
-// EVs available for a cell at tc index i (surrender is a flat -0.5)
+// EVs available for a cell at tc index i (surrender is a flat -0.5; split only on pairs)
 function cellEVs(cell,i){
-  return {stand:cell.ev.stand[i], hit:cell.ev.hit[i], double:cell.ev.double[i], surrender:-0.5};
+  const e={stand:cell.ev.stand[i], hit:cell.ev.hit[i], double:cell.ev.double[i], surrender:-0.5};
+  if(cell.ev.split) e.split=cell.ev.split[i];
+  return e;
 }
 // decision margin = gap between the best and second-best known action EV
 function cellMargin(cell,i){
@@ -942,11 +944,11 @@ function renderChartDetail(){
   if(!CH.ev){ det.style.display="none"; return; }
   const evs=cellEVs(cell,i);
   const act=cell.acts[i];
-  const chosen={S:"stand",H:"hit",D:"double",V:"double",P:null,R:"surrender"}[act];
+  const chosen={S:"stand",H:"hit",D:"double",V:"double",P:"split",R:"surrender"}[act];
   const vals=Object.values(evs);
   const lo=Math.min(0,...vals), hi=Math.max(0,...vals), span=(hi-lo)||1;
   const best=Object.keys(evs).reduce((a,b)=>evs[b]>evs[a]?b:a);
-  const order=["stand","hit","double","surrender"];
+  const order=["stand","hit","double","surrender"].concat(evs.split!=null?["split"]:[]);
   let bars=order.map(k=>{
     const v=evs[k];
     const zero=(0-lo)/span*100;
@@ -964,8 +966,9 @@ function renderChartDetail(){
   let note=`<div class="note" style="margin-top:8px">Engine plays <b style="color:${cellFg(act)}">`+
     `${CH_ACT_FULL[act]}</b>${act!==cell.basic?` (deviation from ${CH_ACT_FULL[cell.basic]})`:""}. `+
     `★ = highest EV, ◀ = engine's action.`;
-  if(sec.kind==="pairs") note+=` This row is a pair — the bars show the hand played as a hard/soft total; `+
-    `the <b>Split</b> action's EV is not modelled yet (roadmap).`;
+  if(sec.kind==="pairs") note+=` This row is a pair — <b>Split</b> is the EV of splitting the pair `+
+    `(two independent hands, double-after-split &amp; resplits per the ruleset); the other bars play the `+
+    `hand as its hard/soft total.`;
   note+=`</div>`;
   det.innerHTML=`<h4>${row.label} vs ${upn} &nbsp;<span class="sub" style="font-size:12px; font-weight:400">`+
     `at true count ${CH.tc>0?"+":""}${CH.tc}</span></h4>${bars}${note}`;
@@ -1212,9 +1215,10 @@ function pgCoach(h, a){
             + (cost>0 ? ` · ~−${cost.toFixed(3)} EV/unit` : "");
 }
 function pgEvCost(cell, i, a){                    // EV given up vs the best modelled action
-  const ev={S:cell.ev.stand[i], H:cell.ev.hit[i], D:cell.ev.double[i], V:cell.ev.double[i], R:-0.5};
-  const chosen=ev[a]; if(chosen==null) return 0;  // split (P) EV not modelled
-  const best=Math.max(...["S","H","D","R"].map(k=>ev[k]).filter(x=>x!=null));
+  const sp=cell.ev.split?cell.ev.split[i]:null;
+  const ev={S:cell.ev.stand[i], H:cell.ev.hit[i], D:cell.ev.double[i], V:cell.ev.double[i], R:-0.5, P:sp};
+  const chosen=ev[a]; if(chosen==null) return 0;  // unmodelled action (e.g. split on a non-pair)
+  const best=Math.max(...["S","H","D","R","P"].map(k=>ev[k]).filter(x=>x!=null));
   return Math.max(0, best-chosen);
 }
 
