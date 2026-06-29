@@ -70,6 +70,12 @@ into a self-contained `dashboard.html`.**
   dashboard matrix in one place. `single` accepts `--bet-ramp` / `--min-bet`.
 - `betspread.py` — sweeps a counter's bet spread to find the lowest-risk
   breakeven spread (see `docs/bet_spreads.md`).
+- `optimize_betspread.py` — bet-spread **optimizer**: grids ramp shapes
+  (ramp-start, top-out count, `gamma` aggressiveness) under a **table maximum**
+  (bet cap) and a **Wong-out** rule (sit out / bet 0 below TC −1, via the ramp's
+  negative cover keys + `min_bet=0`), refining the **EV-max** and **SCORE-max**
+  (= `(EV/σ)²`, the risk-efficient / Kelly optimum) finalists per cap. Writes
+  `results/betspread_opt_*.json` (see `docs/bet_spread_optimization.md`).
 - `blackjack/evcalc.py` + `strategy_ev.py` — analytic count-adjusted per-action
   EV calculator and the generator for the dashboard's strategy-deviation panel;
   self-validates EV crossovers against the engine indices (see

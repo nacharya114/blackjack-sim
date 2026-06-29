@@ -3,6 +3,7 @@ import json
 
 
 import betspread
+import optimize_betspread as opt
 import strategy_chart as sc
 import visualize
 from blackjack.evcalc import EVModel
@@ -34,6 +35,45 @@ def test_interpolate_breakeven_none_when_never_crosses():
     rows = [{"top": 1, "total_house_edge": 0.01},
             {"top": 2, "total_house_edge": 0.008}]
     assert betspread.interpolate_breakeven(rows) is None
+
+
+# --- optimizer ramp construction --------------------------------------------
+def test_opt_build_ramp_endpoints_clamped_and_monotonic():
+    ramp = opt.build_ramp(cap=20, ramp_start=2, top_tc=5, gamma=2.0, wong=-1)
+    # Cover bets at the table minimum from the Wong threshold up to the ramp.
+    assert ramp[-1] == 1 and ramp[0] == 1 and ramp[1] == 1
+    # Ramp tops out exactly at the cap at the top true count.
+    assert ramp[5] == 20
+    # No key below the Wong threshold (those counts are sat out via min_bet=0).
+    assert min(ramp) == -1
+    vals = [ramp[k] for k in sorted(ramp)]
+    assert vals == sorted(vals)                       # non-decreasing
+    assert all(1 <= v <= 20 for v in vals)            # clamped to [1, cap]
+
+
+def test_opt_gamma_backloads_the_ramp():
+    """Higher gamma holds smaller bets through marginal counts (more back-loaded);
+    lower gamma jumps toward the cap earlier. Compare a mid-ramp count."""
+    front = opt.build_ramp(cap=40, ramp_start=1, top_tc=5, gamma=0.5, wong=-1)
+    back = opt.build_ramp(cap=40, ramp_start=1, top_tc=5, gamma=3.0, wong=-1)
+    mid = 3                                            # a count strictly inside the ramp
+    assert front[mid] > back[mid]
+    # Both still pin the same endpoints.
+    assert front[5] == back[5] == 40
+    assert front[1] == back[1] == 1
+
+
+def test_opt_wong_threshold_controls_lowest_key():
+    deep = opt.build_ramp(cap=12, ramp_start=2, top_tc=5, gamma=1.0, wong=-2)
+    assert min(deep) == -2 and deep[-2] == 1
+    # Play-through style (wong at the ramp start) keeps only ramping keys.
+    pt = opt.build_ramp(cap=12, ramp_start=1, top_tc=5, gamma=1.0, wong=1)
+    assert min(pt) == 1
+
+
+def test_opt_ramp_str_is_sorted_and_compact():
+    s = opt.ramp_str({2: 3, -1: 1, 0: 1})
+    assert s == "-1:1,0:1,2:3"
 
 
 # --- dashboard build (inlining) ---------------------------------------------
