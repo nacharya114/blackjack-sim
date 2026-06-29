@@ -128,6 +128,26 @@ def test_side_bet_breakdown_present():
     assert res["side_bets"]["perfect_pairs"]["house_edge"] > 0.03
 
 
+def test_wonging_out_negative_counts_beats_playing_through():
+    """Sitting out deep-negative counts (bet 0 below TC -1) instead of grinding
+    the table minimum through them raises the counter's edge: the same positive
+    ramp keeps all its winning action but sheds the negative-EV low-count rounds.
+    Same seed (common random numbers) so the bet policy, not RNG, drives the gap.
+    """
+    r = Rules(decks=6, dealer_hits_soft_17=False, double_after_split=True,
+              late_surrender=True, blackjack_payout=1.5, penetration=0.85)
+    positive = {1: 1, 2: 2, 3: 4, 4: 8, 5: 12}
+    play_through = _he(r, strategy="counter", bet_ramp=positive)  # min_bet defaults to 1
+    wong = run_simulation(r, "counter", rounds=ROUNDS, cores=1, seed=SEED,
+                          strategy_kwargs={"bet_ramp": {-1: 1, 0: 1, **positive},
+                                           "min_bet": 0.0})
+    # Wonging improves EV/round and pushes the house edge further in the player's
+    # favour (more negative). Margins sit well inside common-random-number noise.
+    assert (wong["total"]["ev_per_round_units"]
+            > play_through["total"]["ev_per_round_units"] + 0.001)
+    assert wong["main"]["house_edge"] < play_through["main"]["house_edge"] - 0.001
+
+
 def test_custom_bet_ramp_widens_variance():
     r = Rules(decks=6, dealer_hits_soft_17=False, double_after_split=True,
               late_surrender=False, blackjack_payout=1.5, penetration=0.75)

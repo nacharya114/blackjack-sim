@@ -20,6 +20,7 @@ MARKER = "/*__SWEEP_DATA__*/ null"
 MARKER_BS = "/*__BETSPREAD_DATA__*/ null"
 MARKER_ST = "/*__STRATEGY_DATA__*/ null"
 MARKER_SC = "/*__STRATEGY_CHART_DATA__*/ null"
+MARKER_OPT = "/*__OPTIMIZER_DATA__*/ null"
 
 
 def load(path):
@@ -28,7 +29,7 @@ def load(path):
 
 
 def build_dashboard(payload, template_path, out_path, betspread=None, strategy=None,
-                    strategy_chart=None):
+                    strategy_chart=None, optimizer=None):
     with open(template_path) as f:
         html = f.read()
     if MARKER not in html:
@@ -41,9 +42,27 @@ def build_dashboard(payload, template_path, out_path, betspread=None, strategy=N
     html = html.replace(MARKER_ST, json.dumps(strategy, separators=(",", ":")), 1)
     # Optional strategy-chart panel data (full chart + deviations + action EVs).
     html = html.replace(MARKER_SC, json.dumps(strategy_chart, separators=(",", ":")), 1)
+    # Optional bet-spread optimizer data (per-config true-count buckets).
+    html = html.replace(MARKER_OPT, json.dumps(optimizer, separators=(",", ":")), 1)
     with open(out_path, "w") as f:
         f.write(html)
     return out_path
+
+
+def _is_breakeven_payload(d):
+    """True only for betspread.py breakeven data (the spread panel's schema).
+
+    The glob `betspread_*.json` also matches `betspread_opt_*.json` from
+    optimize_betspread.py, which has a different shape (`caps`/`references`, no
+    `top`-keyed `results`). Filter those out so the breakeven panel never sees
+    them -- they would break its `results.slice()` / `top` access.
+    """
+    if not isinstance(d, dict):
+        return False
+    res = d.get("results")
+    if not isinstance(res, list) or not res:
+        return False
+    return "top" in res[0] and "total_house_edge" in res[0]
 
 
 def discover_betspread(out_dir, explicit):
@@ -53,9 +72,12 @@ def discover_betspread(out_dir, explicit):
     out = []
     for p in paths:
         try:
-            out.append(load(p))
+            d = load(p)
         except Exception as e:                                    # pragma: no cover
             print(f"  (skipping bet-spread file {p}: {e})")
+            continue
+        if _is_breakeven_payload(d):
+            out.append(d)
     # Sort panels by penetration so the dropdown reads shallow -> deep.
     out.sort(key=lambda d: d.get("penetration", 0))
     return out
@@ -170,6 +192,9 @@ def main():
     ap.add_argument("--strategy-chart", default=None,
                     help="strategy-chart JSON from strategy_chart.py; "
                          "default: results/strategy_chart.json next to --data if present")
+    ap.add_argument("--optimizer", default=None,
+                    help="optimizer JSON from optimizer_data.py for the bet-spread "
+                         "optimizer tab; default: results/optimizer.json next to --data")
     args = ap.parse_args()
 
     payload = load(args.data)
@@ -181,8 +206,11 @@ def main():
     strategy = load(strat_path) if os.path.exists(strat_path) else None
     chart_path = args.strategy_chart or os.path.join(out_dir, "strategy_chart.json")
     strategy_chart = load(chart_path) if os.path.exists(chart_path) else None
+    opt_path = args.optimizer or os.path.join(out_dir, "optimizer.json")
+    optimizer = load(opt_path) if os.path.exists(opt_path) else None
     build_dashboard(payload, args.template, out_html, betspread=betspread,
-                    strategy=strategy, strategy_chart=strategy_chart)
+                    strategy=strategy, strategy_chart=strategy_chart,
+                    optimizer=optimizer)
     extras = []
     if betspread:
         extras.append(f"{len(betspread)} bet-spread panel(s)")
@@ -190,6 +218,8 @@ def main():
         extras.append("strategy panel")
     if strategy_chart:
         extras.append("strategy chart")
+    if optimizer:
+        extras.append(f"optimizer ({len(optimizer.get('configs', []))} configs)")
     print(f"  Wrote {out_html}" + (f"  (+{', '.join(extras)})" if extras else ""))
 
     if not args.no_png:

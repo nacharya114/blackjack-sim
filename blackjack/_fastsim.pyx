@@ -486,9 +486,15 @@ cdef inline char decide(int* cards, int n, int up, int can_double, int can_split
                         int can_surrender, double tc, Rules* ru, Strat* st) noexcept nogil:
     cdef int total, soft, i, is_pair_rank, hit
     cdef char a
-    if st.play_deviations and n == 2:
+    if st.play_deviations:
+        # Index deviations apply to any non-pair total, including 3+ card hands
+        # (you reach a stiff by hitting) -- matching strategy.counter_action,
+        # which only treats a *two-card* matched rank as a pair. Gating this on
+        # n == 2 silently dropped every multi-card stiff deviation, costing the
+        # native counter EV that the Python engine kept (worst at high counts,
+        # where the bet ramp is largest).
         hand_total(cards, n, &total, &soft)
-        is_pair_rank = 1 if rank_index[cards[0]] == rank_index[cards[1]] else 0
+        is_pair_rank = 1 if (n == 2 and rank_index[cards[0]] == rank_index[cards[1]]) else 0
         if not is_pair_rank:
             for i in range(n_dev):
                 if dev_total[i] == total and dev_soft[i] == soft and dev_up[i] == up:

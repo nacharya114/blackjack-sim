@@ -70,6 +70,18 @@ into a self-contained `dashboard.html`.**
   dashboard matrix in one place. `single` accepts `--bet-ramp` / `--min-bet`.
 - `betspread.py` — sweeps a counter's bet spread to find the lowest-risk
   breakeven spread (see `docs/bet_spreads.md`).
+- `optimize_betspread.py` — bet-spread **optimizer**: grids ramp shapes
+  (ramp-start, top-out count, `gamma` aggressiveness) under a **table maximum**
+  (bet cap) and a **Wong-out** rule (sit out / bet 0 below TC −1, via the ramp's
+  negative cover keys + `min_bet=0`), refining the **EV-max** and **SCORE-max**
+  (= `(EV/σ)²`, the risk-efficient / Kelly optimum) finalists per cap. Writes
+  `results/betspread_opt_*.json` (see `docs/bet_spread_optimization.md`).
+- `optimizer_data.py` — generates `results/optimizer.json` for the dashboard's
+  **bet-spread optimizer tab**: samples the engine once per game to measure
+  per-true-count buckets `{p(TC), m(TC), v(TC)}` (frequency, EV/unit,
+  variance/unit), so the tab computes any ramp's EV/σ/SCORE as an exact
+  closed-form weighted sum (`closed_form_metrics`) with no in-browser sim. Stores
+  a closed-form-vs-Monte-Carlo check per config (see `docs/bet_spread_optimization.md`).
 - `blackjack/evcalc.py` + `strategy_ev.py` — analytic count-adjusted per-action
   EV calculator and the generator for the dashboard's strategy-deviation panel;
   self-validates EV crossovers against the engine indices (see
@@ -85,13 +97,17 @@ into a self-contained `dashboard.html`.**
   hardcoded `BASIC_HARD` chart and `ILLUSTRIOUS_18` indices are EV-optimal
   (hard totals); guarded in CI by `tests/test_strategy_validation.py`.
 - `visualize.py` — builds `dashboard.html` (sweep data + any `betspread_*.json`
-  + `strategy_ev.json` + `strategy_chart.json` inlined at `/*__…__*/` markers)
-  and optional PNGs. `make strategy` regenerates both strategy JSONs. The page has
-  two tabs: **Play** (a self-contained client-side practice blackjack table — full
-  6-deck shoe, count peek, realized-EV scoreboard, and a basic-strategy coach
-  driven by the inlined `strategy_chart.json`; all logic lives in
-  `dashboard_template.html`'s `pg*` JS, no Python involved) and **Analysis** (the
-  sweep table, charts, bet-spread/strategy/chart panels). Play is the default tab.
+  + `strategy_ev.json` + `strategy_chart.json` + `optimizer.json` inlined at
+  `/*__…__*/` markers) and optional PNGs. `make strategy` regenerates both
+  strategy JSONs. The page has three tabs: **Play** (a self-contained client-side
+  practice blackjack table — full 6-deck shoe, count peek, realized-EV scoreboard,
+  and a basic-strategy coach driven by the inlined `strategy_chart.json`; all
+  logic lives in `dashboard_template.html`'s `pg*` JS, no Python involved),
+  **Analysis** (the sweep table, charts, bet-spread/strategy/chart panels), and
+  **Optimizer** (the live closed-form bet-spread optimizer driven by the inlined
+  `optimizer.json` buckets — `opt*`/`metricsFor`/`optimizeRamp` JS). Play is the
+  default tab. `discover_betspread` schema-filters `betspread_*.json` so the
+  optimizer's `betspread_opt_*.json` doesn't leak into the breakeven panel.
 - `_run_chunk.py` — internal helper to compute a slice of the sweep resumably.
 - `setup.py` — builds `blackjack._fastsim` via `cythonize` (`make build`); the
   generated `.c`/`.so` are git-ignored, only `_fastsim.pyx` is tracked.
