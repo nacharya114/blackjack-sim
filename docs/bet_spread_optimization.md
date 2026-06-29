@@ -115,6 +115,44 @@ and **sit out everything below TC −1**. Reserve the EV-max "slam the cap at +2
 shape for short, deep-bankroll, low-heat-tolerance situations where maximizing
 this session's expectation outweighs long-run ruin risk.
 
+## Interactive optimizer (dashboard tab)
+
+The dashboard's **Optimizer** tab makes this live: pick a game, set the table
+maximum and the sit-out count, type per-true-count bets (or hit **Optimize SCORE
+/ EV**), and read EV, σ, $/hr, SCORE, N0 and risk of ruin instantly — no
+simulation in the browser. It runs on a **closed-form model**: for each game the
+engine is sampled once (`optimizer_data.py`) to measure, per integer true count
+at bet time,
+
+- `p(TC)` — how often you are at that count (decks + penetration),
+- `m(TC)` — EV per initial unit at that count (rules + index plays + insurance),
+- `v(TC)` — variance per initial unit (~1.30, very flat).
+
+Then for **any** bet ramp `b(TC)`:
+
+```
+EV/round  = Σ p·b·m
+Var/round = Σ p·b²·(v + m²) − EV²
+SCORE     = (EV/σ)²·10⁶          (= 10⁶ / N0)
+```
+
+This is not an approximation: bet size doesn't change the cards, so `p` and `m`
+are independent of the ramp, and the weighted sum is an **identity** — with the
+same seed it reproduces the engine's ramped EV to floating-point (asserted in
+`tests/test_tools.py::test_closed_form_equals_simulation_same_seed`). The only
+error is sampling noise in `m(TC)` at the rare high counts; the tab shows a
+**model-check** line comparing the closed-form against an independent
+Monte-Carlo run of a reference ramp so the fidelity is visible, not assumed.
+
+> **Engine note.** The advantage curve `m(TC)` is measured on the **Python**
+> reference engine. While building this I confirmed the native (Cython) engine
+> agrees with it on counter EV at high precision (native 200M and Python 60M land
+> within CI); earlier apparent gaps were Monte-Carlo noise at 12M. One latent
+> divergence was fixed along the way: the native engine had gated index
+> deviations on two-card hands, so it skipped multi-card stiff deviations that
+> the Python `counter_action` applies — now aligned (EV impact within noise, but
+> the two engines now make identical decisions).
+
 ## Reproduce
 
 ```bash
@@ -126,6 +164,10 @@ python optimize_betspread.py --pen 0.75 --caps 12 20 40 \
 python run_sim.py single --strategy counter --decks 6 --s17 --das --ls \
     --penetration 0.75 --min-bet 0 \
     --bet-ramp "-1:1,0:1,1:1,2:5,3:9,4:12,5:16,6:20" --rounds 60000000 --cores 0
+
+# Regenerate the optimizer-tab data (true-count buckets per game) + dashboard:
+python optimizer_data.py --rounds 40000000 --cores 0 --out results/optimizer.json
+python visualize.py --data results/sweep.json
 ```
 
 ## Caveats

@@ -137,6 +137,22 @@
   .evbar-val{flex:0 0 96px; text-align:right}
   .seg.on-soft{cursor:default}
 
+  /* bet-spread optimizer */
+  .opt-ramp{display:flex; flex-wrap:wrap; gap:6px}
+  .opt-cell{display:flex; flex-direction:column; align-items:center; gap:4px;
+    border:1px solid var(--line); border-radius:8px; padding:7px 6px 6px; min-width:46px}
+  .opt-cell .tc{font-family:var(--mono); font-size:11px; color:var(--brass-2)}
+  .opt-cell .fq{font-family:var(--mono); font-size:9px; color:var(--muted)}
+  .opt-cell input{width:42px; text-align:center; background:var(--chip); color:var(--cream);
+    border:1px solid var(--line); border-radius:6px; padding:5px 3px; font-family:var(--mono); font-size:13px}
+  .opt-cell input:focus{outline:2px solid var(--brass); outline-offset:1px}
+  .opt-cell.sitout{opacity:.5}
+  .opt-cell.sitout input{color:var(--bad); background:rgba(224,112,92,.10)}
+  .opt-cell.big{border-color:var(--brass); box-shadow:0 0 0 1px var(--brass)}
+  .opt-stats .stat .v.score{color:var(--brass-2)}
+  .opt-stats .big{font-size:26px}
+  #opt-canvas{height:280px}
+
   /* top-level tabs */
   .tabs{display:flex; gap:6px; border-bottom:1px solid var(--line); margin-bottom:26px}
   .tab{background:transparent; color:var(--muted); border:1px solid var(--line); border-bottom:0;
@@ -206,6 +222,7 @@
   <nav class="tabs">
     <button class="tab on" id="tab-btn-play">&#9824;&#9829; Play <span class="tag">practice</span></button>
     <button class="tab" id="tab-btn-analysis">Analysis <span class="tag">EV &amp; house edge</span></button>
+    <button class="tab" id="tab-btn-optimizer">Optimizer <span class="tag">bet spread</span></button>
   </nav>
 
   <section id="tab-play" class="tabpane">
@@ -407,6 +424,64 @@
     </div>
   </div>
   </section>
+
+  <section id="tab-optimizer" class="tabpane" hidden>
+  <div class="controls">
+    <div class="ctl"><label>Game (rules &amp; penetration)</label>
+      <select id="opt-cfg" style="min-width:240px"></select></div>
+    <div class="ctl"><label>Table max (× table min)</label>
+      <input id="opt-cap" type="number" min="2" step="1" value="20"></div>
+    <div class="ctl"><label>Sit out below true count</label>
+      <input id="opt-wong" type="number" step="1" value="-1"></div>
+    <div class="ctl"><label>$ per unit (table min)</label>
+      <input id="opt-dpu" type="number" min="1" step="1" value="25"></div>
+    <div class="ctl"><label>Hands / hour</label>
+      <input id="opt-hph" type="number" min="10" step="10" value="100"></div>
+    <div class="ctl"><label>Bankroll ($)</label>
+      <input id="opt-bank" type="number" min="100" step="100" value="20000"></div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Bet ramp <span class="tag">units per true count</span>
+        <span style="margin-left:auto; display:flex; gap:8px; align-items:center">
+          <button class="seg" id="opt-opt-score">Optimize SCORE</button>
+          <button class="seg" id="opt-opt-ev">Optimize EV</button>
+        </span>
+      </h2>
+      <div id="opt-ramp" class="opt-ramp"></div>
+      <div class="note">Type a bet (in units of the table minimum) for each true
+        count, or let the optimizer fill the ramp under your table max.
+        Counts below the sit-out threshold are greyed (bet 0 &mdash; you Wong out).
+        <b>SCORE-max</b> = best bankroll growth per unit risk; <b>EV-max</b> =
+        most $/hr (it slams the cap as soon as the count turns positive).</div>
+    </div>
+
+    <div class="card">
+      <h2>This spread <span class="tag">closed-form</span></h2>
+      <div class="opt-stats" id="opt-stats"></div>
+      <div class="note" id="opt-validate"></div>
+    </div>
+
+    <div class="card full">
+      <h2>Advantage &amp; bet by true count <span class="tag">where the money is</span></h2>
+      <canvas id="opt-canvas" height="280"></canvas>
+      <div class="legend">
+        <span><i style="background:#6db3ff"></i>player advantage % (left)</span>
+        <span><i style="background:#c9a227"></i>your bet, units (right)</span>
+        <span><i style="background:#5fcf9a"></i>count frequency</span>
+        <span><i style="background:#e0705c"></i>sit-out zone</span>
+      </div>
+      <div class="note">Advantage rises ~linearly with the true count (Hi-Lo,
+        Illustrious-18 deviations + insurance baked in); frequency falls off fast,
+        so a few rich counts carry the edge. The optimizer concentrates your bet
+        there while honoring the table max. Measured from the engine
+        (<span class="chip">optimizer_data.py</span>); EV / &sigma; / SCORE are the
+        exact closed-form sums over these buckets &mdash; see
+        <span class="chip">docs/bet_spread_optimization.md</span>.</div>
+    </div>
+  </div>
+  </section>
 </div>
 
 <script>
@@ -414,6 +489,7 @@ const SWEEP_DATA = /*__SWEEP_DATA__*/ null;
 const BETSPREAD_DATA = /*__BETSPREAD_DATA__*/ null;
 const STRATEGY_DATA = /*__STRATEGY_DATA__*/ null;
 const STRATEGY_CHART_DATA = /*__STRATEGY_CHART_DATA__*/ null;
+const OPTIMIZER_DATA = /*__OPTIMIZER_DATA__*/ null;
 
 let DATA = SWEEP_DATA;
 let selIndex = 0;
@@ -1377,17 +1453,210 @@ function setupPractice(){
   pgRender();
 }
 
+// ---- bet-spread optimizer tab ----
+// Closed-form: every ramp's EV/sigma/SCORE is a weighted sum over true-count
+// buckets {p,m,v} measured from the engine (optimizer_data.py). Same math as the
+// Python closed_form_metrics(); validated against Monte-Carlo per config.
+const OPT_GAMMAS=[0.25,0.5,0.75,1,1.25,1.5,2,2.5,3];
+const OPT_STARTS=[1,2,3];
+const OPT_TOPS=[3,4,5,6,7];
+let OPT_RAMP={};                       // tc -> bet (units); the live editable ramp
+
+const optCfg = ()=> OPTIMIZER_DATA.configs[+$("opt-cfg").value||0];
+const optWong= ()=> Math.round(+$("opt-wong").value||0);
+const optCap = ()=> Math.max(2, Math.round(+$("opt-cap").value||2));
+const optRampStr = r => Object.keys(r).map(Number).sort((a,b)=>a-b)
+  .map(k=>`${k>=0?'+':''}${k}:${r[k]}`).join(' ');
+
+// Bet function for a ramp map: 0 below the Wong threshold, 1u cover up to the
+// lowest key, the (capped) top value at/above the highest key.
+function rampBetFn(ramp, wong, cap){
+  const keys=Object.keys(ramp).map(Number).filter(k=>k>=wong);
+  const lo=keys.length?Math.min(...keys):wong, hi=keys.length?Math.max(...keys):wong;
+  return tc=>{
+    if(tc<wong) return 0;
+    if(ramp[tc]!=null) return Math.min(cap, Math.max(0, ramp[tc]));
+    if(tc<lo) return 1;
+    if(tc>hi) return Math.min(cap, ramp[hi]);
+    return 1;
+  };
+}
+const optBet = ()=> rampBetFn(OPT_RAMP, optWong(), optCap());
+
+function metricsFor(cfg, betOf){
+  let ev=0,e2=0,avg=0;
+  for(const b of cfg.buckets){
+    const bet=betOf(b.tc);
+    ev  += b.p*bet*b.m;
+    e2  += b.p*bet*bet*(b.v + b.m*b.m);
+    avg += b.p*bet;
+  }
+  const sd=Math.sqrt(Math.max(0, e2-ev*ev));
+  return {ev, sd, avg, score:(sd>0&&ev>0)?(ev/sd)**2*1e6:0,
+          n0:ev>0?(sd/ev)**2:Infinity, he:avg>0?-ev/avg:0};
+}
+
+// A parametric ramp: 1u cover from wong..start-1, then base..cap along frac^gamma.
+function paramRamp(cap,start,top,gamma,wong){
+  const r={};
+  for(let tc=wong; tc<start; tc++) r[tc]=1;
+  const span=top-start;
+  for(let tc=start; tc<=top; tc++){
+    const frac = span<=0?1:Math.pow((tc-start)/span, gamma);
+    r[tc]=Math.max(1, Math.min(cap, Math.round(1+(cap-1)*frac)));
+  }
+  return r;
+}
+
+function optimizeRamp(objective){
+  const cfg=optCfg(), cap=optCap(), wong=optWong(), tcMax=cfg.tc_max;
+  let best=null, bestVal=-Infinity;
+  for(const start of OPT_STARTS) for(const top of OPT_TOPS){
+    if(top<=start || top>tcMax) continue;
+    for(const g of OPT_GAMMAS){
+      const ramp=paramRamp(cap,start,top,g,wong);
+      const m=metricsFor(cfg, rampBetFn(ramp,wong,cap));
+      const val = objective==="ev" ? m.ev : m.score;
+      if(val>bestVal){ bestVal=val; best=ramp; }
+    }
+  }
+  OPT_RAMP = best || {};
+  $("opt-opt-score").classList.toggle("on", objective==="score");
+  $("opt-opt-ev").classList.toggle("on", objective==="ev");
+  optRender();
+}
+
+function setupOptimizer(){
+  if(!OPTIMIZER_DATA || !OPTIMIZER_DATA.configs || !OPTIMIZER_DATA.configs.length){
+    $("tab-btn-optimizer").style.display="none"; return;
+  }
+  $("opt-cfg").innerHTML = OPTIMIZER_DATA.configs.map((c,i)=>
+    `<option value="${i}">${c.label} &middot; ${(c.penetration*100).toFixed(0)}% pen</option>`).join("");
+  $("opt-cfg").onchange = ()=>optimizeRamp("score");
+  $("opt-cap").oninput  = ()=>optimizeRamp(curObjective());
+  $("opt-wong").oninput = ()=>optimizeRamp(curObjective());
+  for(const id of ["opt-dpu","opt-hph","opt-bank"]) $(id).oninput=optRender;
+  $("opt-opt-score").onclick=()=>optimizeRamp("score");
+  $("opt-opt-ev").onclick=()=>optimizeRamp("ev");
+  optimizeRamp("score");                 // start from the risk-efficient optimum
+}
+const curObjective = ()=> $("opt-opt-ev").classList.contains("on") ? "ev" : "score";
+
+function optRender(){
+  const cfg=optCfg(), wong=optWong(), cap=optCap(), betOf=optBet();
+  // --- ramp editor cells ---
+  const freq={}; cfg.buckets.forEach(b=>freq[b.tc]=b.p);
+  const lo=Math.min(-2, wong), hi=cfg.tc_max;
+  let html="";
+  for(let tc=lo; tc<=hi; tc++){
+    const sit=tc<wong, bet=betOf(tc);
+    const f = freq[tc]!=null ? (freq[tc]*100).toFixed(1)+"%" : "&middot;";
+    const big = !sit && bet>=cap;
+    html+=`<div class="opt-cell ${sit?'sitout':''} ${big?'big':''}">`+
+      `<span class="tc">${tc>=0?'+':''}${tc}</span>`+
+      `<input type="number" min="0" step="1" data-tc="${tc}" value="${sit?0:bet}" ${sit?'disabled':''}>`+
+      `<span class="fq">${f}</span></div>`;
+  }
+  $("opt-ramp").innerHTML=html;
+  $("opt-ramp").querySelectorAll("input").forEach(inp=>{
+    inp.onchange=()=>{ const tc=+inp.dataset.tc;
+      OPT_RAMP[tc]=Math.min(cap, Math.max(0, Math.round(+inp.value||0)));
+      $("opt-opt-score").classList.remove("on"); $("opt-opt-ev").classList.remove("on");
+      optRender();
+    };
+  });
+  // --- stats ---
+  const m=metricsFor(cfg, betOf);
+  const dpu=+$("opt-dpu").value||1, hph=+$("opt-hph").value||100, bank=+$("opt-bank").value||1;
+  const hourlyEV=m.ev*hph*dpu, hourlySD=m.sd*Math.sqrt(hph)*dpu;
+  const bankUnits=bank/dpu;
+  const ror = m.ev>0 ? Math.exp(-2*m.ev*bankUnits/(m.sd*m.sd)) : 1;
+  const n0h = isFinite(m.n0) ? m.n0/hph : Infinity;
+  const row=(k,v,vc)=>`<div class="stat"><span class="k">${k}</span><span class="v ${vc||''}">${v}</span></div>`;
+  $("opt-stats").innerHTML =
+    `<div class="big ${hourlyEV>=0?'pos':'neg'}">${fmtMoney(hourlyEV)}<span style="font-size:13px;color:var(--muted)"> / hr</span></div>`+
+    row("Avg bet", m.avg.toFixed(2)+" u  ($"+(m.avg*dpu).toFixed(0)+")")+
+    row("EV / round", m.ev.toFixed(4)+" u")+
+    row("House edge", fmtPct(m.he), m.he<0?'pos':'neg')+
+    row("Std / round", m.sd.toFixed(2)+" u")+
+    row("Hourly &sigma;", "$"+hourlySD.toFixed(0))+
+    row("SCORE  (EV/&sigma;)&sup2;", m.score.toFixed(1), 'score')+
+    row("N0 (break-even)", isFinite(m.n0)? Math.round(m.n0).toLocaleString()+" rds ("+n0h.toFixed(0)+" hr)" : "&infin;")+
+    row("Risk of ruin", m.ev>0 ? (ror*100).toFixed(1)+"%" : "100%", m.ev>0&&ror<0.135?'pos':'neg');
+  // --- validation note ---
+  const vd=cfg.validation;
+  if(vd){
+    const cf=vd.closed_form, mc=vd.monte_carlo;
+    $("opt-validate").innerHTML =
+      `<b>Model check</b> &mdash; reference ramp <span class="chip">${optRampStr(vd.ramp)}</span>: `+
+      `closed-form EV <b>${cf.ev_per_round_units.toFixed(4)}</b> / SCORE <b>${cf.score.toFixed(1)}</b> `+
+      `vs Monte-Carlo (${(mc.rounds/1e6).toFixed(0)}M, ${mc.engine}) EV <b>${mc.ev_per_round_units.toFixed(4)}</b> / SCORE <b>${mc.score.toFixed(1)}</b>.`;
+  }
+  optDraw(cfg, betOf, wong, cap);
+}
+
+function optDraw(cfg, betOf, wong, cap){
+  const cvs=$("opt-canvas"); if(!cvs) return;
+  const W=cvs.clientWidth|0; if(W<=0) return;       // tab hidden -> skip (redraw on show)
+  cvs.width=W; const H=cvs.height=280;
+  const ctx=cvs.getContext("2d"); ctx.clearRect(0,0,W,H);
+  const padL=52,padR=46,padT=14,padB=34;
+  const lo=Math.min(-2,wong), hi=cfg.tc_max, span=hi-lo;
+  const advs=cfg.buckets.map(b=>b.m*100);
+  const aHi=Math.max(2, ...advs)*1.1, aLo=Math.min(-2, ...advs)*1.1;
+  const x=tc=> padL+(W-padL-padR)*((tc-lo)/(span||1));
+  const yA=v=> padT+(H-padT-padB)*(1-(v-aLo)/(aHi-aLo));
+  const yB=b=> padT+(H-padT-padB)*(1-b/cap);
+  const fByTc={}, mByTc={}; cfg.buckets.forEach(b=>{fByTc[b.tc]=b.p; mByTc[b.tc]=b.m*100;});
+  const cw=(W-padL-padR)/(span+1)*0.62;
+  // sit-out zone shading
+  if(wong>lo){ ctx.fillStyle="rgba(224,112,92,.10)";
+    ctx.fillRect(padL, padT, x(wong-0.5)-padL, H-padT-padB); }
+  // gridlines + left (advantage %) axis
+  ctx.font="11px ui-monospace,monospace"; ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){ const v=aLo+(aHi-aLo)*i/4, yy=yA(v);
+    ctx.strokeStyle="rgba(255,255,255,.07)"; ctx.beginPath(); ctx.moveTo(padL,yy); ctx.lineTo(W-padR,yy); ctx.stroke();
+    ctx.fillStyle="#6db3ff"; ctx.textAlign="right"; ctx.fillText((v>=0?'+':'')+v.toFixed(1)+"%", padL-6, yy+3);
+    ctx.fillStyle="#c9a227"; ctx.textAlign="left"; ctx.fillText((cap*(1-i/4)).toFixed(0), W-padR+6, yy+3);
+  }
+  // zero advantage line
+  ctx.strokeStyle="rgba(255,255,255,.28)"; ctx.beginPath(); ctx.moveTo(padL,yA(0)); ctx.lineTo(W-padR,yA(0)); ctx.stroke();
+  // frequency bars (faint, scaled to a fraction of the plot height)
+  const fMax=Math.max(...cfg.buckets.map(b=>b.p));
+  for(let tc=lo;tc<=hi;tc++){ const p=fByTc[tc]; if(p==null) continue;
+    const bh=(H-padT-padB)*0.5*(p/fMax), xx=x(tc);
+    ctx.fillStyle="rgba(95,207,154,.22)"; ctx.fillRect(xx-cw/2, H-padB-bh, cw, bh);
+  }
+  // bet bars (right axis, brass) -- the ramp
+  for(let tc=lo;tc<=hi;tc++){ const b=betOf(tc); if(b<=0) continue;
+    const xx=x(tc), yy=yB(b);
+    ctx.fillStyle="rgba(201,162,39,.55)"; ctx.fillRect(xx-cw/2, yy, cw, (H-padB)-yy);
+  }
+  // advantage line + dots (left axis, blue)
+  ctx.strokeStyle="#6db3ff"; ctx.lineWidth=2; ctx.beginPath();
+  cfg.buckets.forEach((b,i)=>{const xx=x(b.tc),yy=yA(b.m*100); i?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy);});
+  ctx.stroke();
+  cfg.buckets.forEach(b=>{ const xx=x(b.tc),yy=yA(b.m*100);
+    ctx.fillStyle=b.m>=0?"#5fcf9a":"#e0705c"; ctx.beginPath(); ctx.arc(xx,yy,3,0,2*Math.PI); ctx.fill(); });
+  // x labels
+  ctx.fillStyle="#8caa9b"; ctx.textAlign="center";
+  for(let tc=lo;tc<=hi;tc++) ctx.fillText((tc>=0?'+':'')+tc, x(tc), H-padB+16);
+  ctx.fillText("true count", (padL+W-padR)/2, H-4);
+}
+
 // ---- tab switching ----
 function setupTabs(){
-  const panes={play:"tab-play", analysis:"tab-analysis"};
+  const panes={play:"tab-play", analysis:"tab-analysis", optimizer:"tab-optimizer"};
   function show(which){
     for(const [k,id] of Object.entries(panes)){
       $(id).hidden=(k!==which);
       $("tab-btn-"+k).classList.toggle("on", k===which);
     }
+    if(which==="optimizer" && OPTIMIZER_DATA && OPTIMIZER_DATA.configs) optRender();
   }
   $("tab-btn-play").onclick=()=>show("play");
   $("tab-btn-analysis").onclick=()=>show("analysis");
+  $("tab-btn-optimizer").onclick=()=>show("optimizer");
   show("play");
 }
 
@@ -1396,6 +1665,7 @@ setupPractice();
 setupBetspread();
 setupStrategy();
 setupStrategyChart();
+setupOptimizer();
 if(DATA && DATA.results){ selectRun(0); }
 else {
   $("tab-analysis").insertAdjacentHTML("beforeend",

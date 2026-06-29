@@ -1,9 +1,12 @@
 """Tests for the dashboard builder and bet-spread helpers (no matplotlib needed)."""
 import json
 
+import pytest
+
 
 import betspread
 import optimize_betspread as opt
+import optimizer_data as od
 import strategy_chart as sc
 import visualize
 from blackjack.evcalc import EVModel
@@ -74,6 +77,78 @@ def test_opt_wong_threshold_controls_lowest_key():
 def test_opt_ramp_str_is_sorted_and_compact():
     s = opt.ramp_str({2: 3, -1: 1, 0: 1})
     assert s == "-1:1,0:1,2:3"
+
+
+# --- optimizer-tab closed-form model ----------------------------------------
+def test_closed_form_metrics_matches_hand_computation():
+    # Two true-count buckets; verify EV, variance and house edge by hand.
+    buckets = [
+        {"tc": 0, "p": 0.8, "m": -0.01, "v": 1.30},   # bet 1u
+        {"tc": 3, "p": 0.2, "m": 0.05, "v": 1.20},    # bet 4u
+    ]
+    bet_of = od.ramp_bet_of({0: 1, 3: 4}, 1.0)
+    r = od.closed_form_metrics(buckets, bet_of)
+    ev = 0.8 * 1 * -0.01 + 0.2 * 4 * 0.05            # = 0.032
+    e2 = 0.8 * 1 * (1.30 + 0.01**2) + 0.2 * 16 * (1.20 + 0.05**2)
+    var = e2 - ev * ev
+    assert r["ev_per_round_units"] == pytest.approx(ev)
+    assert r["std_per_round_units"] == pytest.approx(var ** 0.5)
+    assert r["score"] == pytest.approx((ev / var ** 0.5) ** 2 * 1e6)
+    assert r["avg_initial_units"] == pytest.approx(0.8 * 1 + 0.2 * 4)   # 1.6
+    assert r["house_edge"] == pytest.approx(-ev / 1.6)
+
+
+def test_ramp_bet_of_sitout_cover_and_cap():
+    bet_of = od.ramp_bet_of({-1: 1, 0: 1, 1: 1, 2: 4, 3: 8}, 0.0)
+    assert bet_of(-2) == 0.0          # below the lowest key -> sit out (min_bet 0)
+    assert bet_of(-1) == 1.0          # cover at the table minimum
+    assert bet_of(2) == 4.0
+    assert bet_of(9) == 8.0           # at/above the top key -> top bet
+
+
+def test_closed_form_equals_simulation_same_seed():
+    """The closed-form weighted sum over buckets is an identity: with the same
+    seed (identical card sequences, only bets differ) it reproduces the engine's
+    ramp EV exactly. This is the model the dashboard optimizer tab runs on."""
+    from blackjack import Rules, run_simulation
+    rules = Rules(decks=6, dealer_hits_soft_17=False, double_after_split=True,
+                  late_surrender=True, blackjack_payout=1.5, penetration=0.75)
+    ramp = {1: 1, 2: 3, 3: 6, 4: 9}
+    buckets = od.measure_buckets(rules, 120_000, cores=1, seed=321)
+    cf = od.closed_form_metrics(buckets, od.ramp_bet_of(ramp, 1.0))
+    mc = run_simulation(rules, "counter", rounds=120_000, cores=1, seed=321,
+                        strategy_kwargs={"bet_ramp": dict(ramp), "min_bet": 1.0},
+                        engine="python")
+    assert cf["ev_per_round_units"] == pytest.approx(
+        mc["total"]["ev_per_round_units"], abs=1e-12)
+
+
+# --- optimizer panel inlining + betspread schema filtering ------------------
+def test_discover_betspread_skips_optimizer_files(tmp_path):
+    # A betspread.py breakeven file (kept) and an optimize_betspread.py file (dropped).
+    (tmp_path / "betspread_pen75.json").write_text(json.dumps({
+        "penetration": 0.75, "results": [{"top": 1, "total_house_edge": 0.003}]}))
+    (tmp_path / "betspread_opt_pen75.json").write_text(json.dumps({
+        "penetration": 0.75, "caps": [{"cap": 12}], "references": []}))
+    found = visualize.discover_betspread(str(tmp_path), None)
+    assert len(found) == 1 and "caps" not in found[0]
+
+
+def test_build_dashboard_inlines_optimizer(tmp_path):
+    out = tmp_path / "dashboard.html"
+    optimizer = {"generated": "2026-01-01 00:00", "tc_min": -2, "tc_max": 4,
+                 "configs": [{"id": "X", "label": "6D S17", "penetration": 0.75,
+                              "tc_min": -2, "tc_max": 4,
+                              "buckets": [{"tc": 0, "p": 0.7, "m": -0.01, "v": 1.3},
+                                          {"tc": 3, "p": 0.3, "m": 0.05, "v": 1.2}],
+                              "validation": {"ramp": {"3": 4}}}]}
+    visualize.build_dashboard(_fake_sweep(), visualize.TEMPLATE, str(out),
+                              optimizer=optimizer)
+    html = out.read_text()
+    assert "/*__OPTIMIZER_DATA__*/" not in html      # marker fully replaced
+    import re
+    m = re.search(r"const OPTIMIZER_DATA = (\{.*?\});", html)
+    assert json.loads(m.group(1))["configs"][0]["label"] == "6D S17"
 
 
 # --- dashboard build (inlining) ---------------------------------------------
@@ -178,6 +253,7 @@ def test_build_dashboard_inlines_strategy_chart(tmp_path):
 def test_discover_betspread_reads_and_sorts(tmp_path):
     for pen in (0.833, 0.75):
         (tmp_path / f"betspread_{int(pen*1000)}.json").write_text(
-            json.dumps({"penetration": pen, "results": []}))
+            json.dumps({"penetration": pen,
+                        "results": [{"top": 1, "total_house_edge": 0.003}]}))
     found = visualize.discover_betspread(str(tmp_path), None)
     assert [d["penetration"] for d in found] == [0.75, 0.833]   # sorted shallow->deep
