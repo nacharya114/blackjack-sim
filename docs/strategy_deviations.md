@@ -36,6 +36,14 @@ deck** (no simulation, so the curves are smooth and exact for the model):
   natural when the rules peek — i.e. the situations where the player still acts.
 - **Player** EVs: `stand` vs. the dealer distribution; `hit` plays optimally
   thereafter; `double` = 2 × (one card, then stand); `surrender` = −0.5.
+- **Split** (`evcalc.split_ev`, passed `pair=` to `action_evs`): the two hands
+  are independent on the infinite deck, so `split EV = 2 ×` the value of one
+  split-card slot — deal a card, then play it optimally (hit / stand /
+  double-after-split, or one card only for split aces; a two-card 21 is a plain
+  21, not a paid blackjack). Resplits are modelled per lineage up to the
+  ruleset's hand cap (a slight overestimate of the global cap, immaterial in
+  practice). This is what makes "always split 8s / A,A" and "never split T,T /
+  5,5" fall straight out of the EV ordering.
 - **Insurance** is a count-only bet: EV per unit = `3·p(ten) − 1`, which turns
   positive once tens exceed 1/3 of the deck (≈ true count +3).
 
@@ -73,8 +81,8 @@ A second, complementary view renders the **whole chart** as a color-coded grid
   EV gap between the best and second-best action — warmer = closer call) and, on
   click, shows every action's EV at the selected count, drawn from
   `evcalc.action_evs`. These EVs are exact for **hard and soft** totals; pair
-  rows show the hand played as its underlying total, because the **split** action
-  has no EV model yet (roadmap issue #2).
+  rows additionally show a **Split** EV (`evcalc.split_ev`), so the bar chart
+  ranks splitting against the other actions directly.
 
 The EV overlay makes contested cells obvious — e.g. **12 v 4** near neutral, where
 standing and hitting sit within ~0.002 EV of each other (the closest call on the
@@ -105,7 +113,9 @@ offline cross-check that proves it is EV-correct (and a CI guard via
    subset rather than the complete set.
 
 It exits non-zero on any disagreement beyond a small EV tie-tolerance. Scope is
-hard totals (soft hands and pairs need the EV-calculator extensions noted above).
+the hard-total basic chart and indices; the soft- and pair-EV machinery now
+exists in `evcalc` (the chart panel draws those curves), but extending this
+offline *cross-check* to soft hands and split decisions is separate follow-up.
 
 > Note: the committed `results/sweep.json` / `betspread_*.json` were generated
 > before that fix; the effect on the counter's overall EV is negligible (these

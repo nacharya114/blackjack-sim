@@ -15,9 +15,9 @@ sync with `blackjack/strategy.py`. For each (hand, dealer-upcard) cell it record
 
 plus per-action EV curves (stand / hit / double) from `blackjack/evcalc.py`, used
 for the "Show action EVs" detail + decision-margin heat tint. EVs are exact for
-hard and soft totals; for pair rows they describe the hand played *as its total*
-(the split action's EV is not modelled yet -- see roadmap issue #2), which the
-dashboard flags.
+hard and soft totals; pair rows additionally carry a **split** EV curve
+(`evcalc.split_ev`, ruleset-aware: DAS, resplits, split-aces), so the dashboard
+can show why splitting wins (or loses) versus playing the hand as its total.
 """
 from __future__ import annotations
 
@@ -61,8 +61,10 @@ def pair_label(v: int) -> str:
     return "A,A" if v == 11 else ("T,T" if v == 10 else f"{v},{v}")
 
 
-def cell_for(cards, up, is_soft, rules, tc_grid, models):
-    """Build one chart cell: basic action, per-TC action, and EV curves."""
+def cell_for(cards, up, is_soft, rules, tc_grid, models, pair_val=None):
+    """Build one chart cell: basic action, per-TC action, and EV curves.
+
+    `pair_val` (the pair's card value, 11 = aces) enables the split-EV curve."""
     total = hand_total(cards)[0]
     can_double = rules.can_double_total(min(total, 21))
     can_split = True   # the engine only splits when the hand is actually a pair
@@ -75,20 +77,29 @@ def cell_for(cards, up, is_soft, rules, tc_grid, models):
                            rules=rules) for tc in tc_grid]
 
     ev = {"stand": [], "hit": [], "double": []}
+    if pair_val is not None:
+        ev["split"] = []
     for mdl in models:
-        ae = mdl.action_evs(min(total, 21), up, soft=is_soft)
+        ae = mdl.action_evs(min(total, 21), up, soft=is_soft, pair=pair_val,
+                            das=rules.double_after_split,
+                            max_hands=rules.max_split_hands,
+                            resplit_aces=rules.resplit_aces,
+                            hit_split_aces=rules.hit_split_aces)
         ev["stand"].append(round(ae["stand"], 4))
         ev["hit"].append(round(ae["hit"], 4))
         ev["double"].append(round(ae["double"], 4))
+        if pair_val is not None:
+            ev["split"].append(round(ae["split"], 4))
     return {"basic": basic, "acts": acts, "ev": ev}
 
 
 def build_section(name, kind, rows_spec, rules, tc_grid, models):
     rows = []
-    for label, cards, is_soft, split_note in rows_spec:
-        cells = [cell_for(cards, up, is_soft, rules, tc_grid, models) for up in UPCARDS]
+    for label, cards, is_soft, pair_val in rows_spec:
+        cells = [cell_for(cards, up, is_soft, rules, tc_grid, models, pair_val)
+                 for up in UPCARDS]
         rows.append({"label": label, "ev_kind": "soft" if is_soft else "hard",
-                     "split_note": split_note, "cells": cells})
+                     "is_pair": pair_val is not None, "cells": cells})
     return {"name": name, "kind": kind, "rows": rows}
 
 
@@ -106,10 +117,10 @@ def main() -> None:
 
     pairs_spec = [(pair_label(v),
                    [card_for_value(v, 0), card_for_value(v, 1)],
-                   v == 11, True) for v in PAIR_VALUES]
-    soft_spec = [(f"A,{k}", [card_for_value(11, 0), card_for_value(k, 1)], True, False)
+                   v == 11, v) for v in PAIR_VALUES]
+    soft_spec = [(f"A,{k}", [card_for_value(11, 0), card_for_value(k, 1)], True, None)
                  for k in SOFT_KICKERS]
-    hard_spec = [(str(t), hard_cards(t), False, False) for t in HARD_TOTALS]
+    hard_spec = [(str(t), hard_cards(t), False, None) for t in HARD_TOTALS]
 
     sections = [
         build_section("Pairs", "pairs", pairs_spec, rules, tc_grid, models),

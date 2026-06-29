@@ -74,7 +74,8 @@ into a self-contained `dashboard.html`.**
   EV calculator and the generator for the dashboard's strategy-deviation panel;
   self-validates EV crossovers against the engine indices (see
   `docs/strategy_deviations.md`). `evcalc.action_evs` handles **hard and soft**
-  totals (pass `soft=`); only split EVs are still missing (roadmap #2).
+  totals (pass `soft=`) and **pair splits** (pass `pair=`; `evcalc.split_ev` is
+  ruleset-aware — DAS, resplits, split-aces).
 - `strategy_chart.py` — generates `results/strategy_chart.json` for the dashboard's
   **basic-strategy-chart panel**: walks every pairs/soft/hard cell straight out of
   the engine's `basic_action`/`counter_action`, recording the basic action, the

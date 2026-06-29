@@ -20,8 +20,9 @@ moving probability mass `m = tc/104` from the low group (2-6) to the high group
     p(ace)       = 1/13 + 0.2*m
 
 Hitting is assumed to play optimally thereafter (standard total-dependent EV).
-Every engine index play is a hard, non-pair total, so splits and soft hands are
-not needed here.
+`action_evs` covers stand / hit / double / surrender for hard *and* soft totals;
+passing `pair=` adds the EV of **splitting** that pair (`split_ev`), so the
+strategy-chart panel can show every action's EV for pair rows too.
 """
 from __future__ import annotations
 
@@ -118,9 +119,9 @@ class EVModel:
                 ev -= po
         return ev
 
-    def action_evs(self, player_total: int, up: int, soft: bool = False) -> dict:
-        """EV of stand / hit / double / surrender for a (total, up) situation."""
-        dist = self.dealer_dist_from_up(up)
+    def _play_fns(self, dist: dict):
+        """Build memoized optimal-`hit` and one-card-`double` EV functions for a
+        given dealer distribution (shared by action_evs and split_ev)."""
         hit_memo: dict[tuple[int, bool], float] = {}
 
         def hit(total: int, sft: bool) -> float:
@@ -144,12 +145,70 @@ class EVModel:
                 ev += pv * (-1.0 if nt > 21 else self.stand_ev(nt, dist))
             return 2.0 * ev
 
-        return {
+        return hit, double
+
+    def action_evs(self, player_total: int, up: int, soft: bool = False,
+                   pair: int | None = None, **split_kwargs) -> dict:
+        """EV of stand / hit / double / surrender for a (total, up) situation.
+
+        Pass `pair=<card value>` (11 = aces, 10 = any ten) to also include the
+        EV of **splitting** that pair (see `split_ev`); extra keyword args are
+        forwarded to `split_ev` (das / max_hands / resplit_aces / hit_split_aces)."""
+        dist = self.dealer_dist_from_up(up)
+        hit, double = self._play_fns(dist)
+        out = {
             "stand": self.stand_ev(player_total, dist),
             "hit": hit(player_total, soft),
             "double": double(player_total, soft),
             "surrender": -0.5,
         }
+        if pair is not None:
+            out["split"] = self.split_ev(pair, up, **split_kwargs)
+        return out
+
+    def split_ev(self, pair_val: int, up: int, *, das: bool = True,
+                 max_hands: int = 4, resplit_aces: bool = False,
+                 hit_split_aces: bool = False) -> float:
+        """EV of splitting a pair of value `pair_val` (11 = aces) vs dealer `up`.
+
+        Both post-split hands are independent on the count-adjusted infinite deck,
+        so the EV is `2 ×` the value of one split-card "slot" played optimally
+        (hit / stand / double-after-split, or one card only for split aces). A
+        two-card 21 after a split is a plain 21, not a paid blackjack.
+
+        Resplits are modelled per lineage up to `max_hands` total hands: each slot
+        may resplit independently, a slight overestimate of the global hand cap
+        (the error is tiny — resplits need a repeated rank — and only nudges the
+        already-dominant split EV of A,A / 8,8 a hair higher)."""
+        dist = self.dealer_dist_from_up(up)
+        hit, double = self._play_fns(dist)
+        is_ace = pair_val == 11
+        one_card_only = is_ace and not hit_split_aces
+        can_double_after = das and not one_card_only
+
+        def play_slot(total: int, soft: bool) -> float:
+            """Optimal EV of a freshly-formed post-split two-card hand."""
+            if one_card_only:                      # split aces take a single card
+                return self.stand_ev(total, dist)
+            opts = [self.stand_ev(total, dist), hit(total, soft)]
+            if can_double_after:
+                opts.append(double(total, soft))
+            return max(opts)
+
+        def slot_ev(n_hands: int) -> float:
+            """EV of one split-card slot when `n_hands` are already in play."""
+            can_resplit = n_hands < max_hands and (not is_ace or resplit_aces)
+            base_total, base_soft = add_card(0, False, pair_val)   # the split card
+            ev = 0.0
+            for v, pv in self.p.items():
+                if v == pair_val and can_resplit:                  # draw a match
+                    ev += pv * 2.0 * slot_ev(n_hands + 1)          # this slot resplits
+                else:
+                    nt, ns = add_card(base_total, base_soft, v)
+                    ev += pv * play_slot(nt, ns)
+            return ev
+
+        return 2.0 * slot_ev(2)        # the first split makes two hands
 
     def insurance_ev(self) -> float:
         """EV per unit of the insurance side bet (pays 2:1 if dealer has a ten)."""
