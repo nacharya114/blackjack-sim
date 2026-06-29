@@ -106,16 +106,22 @@ offline cross-check that proves it is EV-correct (and a CI guard via
 
 1. checks all **170 hard basic-strategy cells** against the EV-optimal action on
    a neutral deck, under both S17 and H17 (170/170 exact, no mismatches);
-2. **derives** the Hi-Lo index for every borderline hard hand by scanning the
+2. checks all **200 pair/split cells** (10 pairs × 10 upcards × {DAS, noDAS})
+   against the EV-optimal choice among split / stand / hit / double / surrender,
+   with the split EV from `evcalc.split_ev` — 200/200 exact under S17 and H17,
+   so "always split 8s & A,A / never split T,T & 5,5 / 4,4 splits vs 5–6 only
+   with DAS" all fall straight out of the EV math;
+3. **derives** the Hi-Lo index for every borderline hard hand by scanning the
    true count and diffs the result against `ILLUSTRIOUS_18` (all 15 confirmed);
-3. lists derived hard deviations *outside* the Illustrious 18 (e.g. 8v6 double
+4. lists derived hard deviations *outside* the Illustrious 18 (e.g. 8v6 double
    at +1.6, 16v7 stand at +7.7) — confirming the I18 is a sensible curated
    subset rather than the complete set.
 
-It exits non-zero on any disagreement beyond a small EV tie-tolerance. Scope is
-the hard-total basic chart and indices; the soft- and pair-EV machinery now
-exists in `evcalc` (the chart panel draws those curves), but extending this
-offline *cross-check* to soft hands and split decisions is separate follow-up.
+It exits non-zero on any disagreement beyond a small EV tie-tolerance. Hard
+totals and pair/split decisions are now guarded; only **soft** totals remain
+unvalidated — the total-dependent infinite-deck model puts a couple of borderline
+soft doubles (e.g. A,2 v 5) a hair over the tie tolerance, so they need a
+composition-aware EV refinement before they can be guarded too.
 
 > Note: the committed `results/sweep.json` / `betspread_*.json` were generated
 > before that fix; the effect on the counter's overall EV is negligible (these

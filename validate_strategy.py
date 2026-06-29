@@ -6,13 +6,17 @@ Validator only: the engine keeps using the hardcoded `BASIC_HARD` chart and
 where they are not, as it did for the 13v2/12v4 no-op bug). It:
 
   1. checks every hard basic-strategy cell against the EV-optimal action on a
-     neutral (true-count 0) deck, and
-  2. derives the Hi-Lo index for every borderline hard hand by scanning the true
+     neutral (true-count 0) deck,
+  2. checks every pair cell (split vs. play-as-total) against the EV-optimal
+     action, using `evcalc.split_ev`, under both DAS and noDAS, and
+  3. derives the Hi-Lo index for every borderline hard hand by scanning the true
      count, then diffs the derived set against ILLUSTRIOUS_18.
 
-Scope: hard totals only -- soft hands need a small EV extension and pairs need
-split EVs (see docs/strategy_deviations.md). Soft/pair cells are reported as
-"not validated" rather than silently skipped.
+Scope: hard totals + pair/split decisions. Soft hands are still reported as
+"not validated" -- the total-dependent infinite-deck model puts a couple of
+borderline soft doubles (e.g. A,2 v 5) a hair over the tie tolerance, so they
+need a composition-aware EV refinement before they can be guarded (see
+docs/strategy_deviations.md).
 
     python validate_strategy.py            # human-readable report
     python validate_strategy.py --h17      # validate against an H17 game
@@ -24,20 +28,36 @@ import argparse
 import json
 import os
 
+from blackjack.cards import hand_total
 from blackjack.evcalc import EVModel
 from blackjack.rules import Rules
 from blackjack.strategy import (
-    BASIC_HARD, BASIC_SOFT, PAIRS_DAS, ILLUSTRIOUS_18, _basic_hard_action,
+    BASIC_HARD, BASIC_SOFT, ILLUSTRIOUS_18, _basic_hard_action,
+    basic_action,
 )
 
 UPCARDS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 CODE = {"stand": "S", "hit": "H", "double": "D"}
 ACT = {"S": "stand", "H": "hit", "D": "double"}
 CANDIDATES = ("stand", "hit", "double")
+# Engine pair-action code -> EV-option name ('V' is double-if-allowed, i.e. double).
+PAIR_ACT = {"P": "split", "S": "stand", "H": "hit", "D": "double", "V": "double",
+            "R": "surrender"}
+PAIR_VALUES = [11, 10, 9, 8, 7, 6, 5, 4, 3, 2]    # A,A  T,T  9,9 ... 2,2
 
 
 def upname(up: int) -> str:
     return "A" if up == 11 else str(up)
+
+
+def _card_for_value(v: int, suit: int = 0) -> int:
+    """A representative card int for a blackjack value (11=ace, 10=any ten)."""
+    rank = 12 if v == 11 else (8 if v == 10 else v - 2)
+    return rank + 13 * suit
+
+
+def pair_label(v: int) -> str:
+    return "A,A" if v == 11 else ("T,T" if v == 10 else f"{v},{v}")
 
 
 def best_action(ev: dict) -> str:
@@ -72,6 +92,51 @@ def validate_basic(h17: bool, tol: float):
             rows.append(rec)
             if status == "MISMATCH":
                 mism.append(rec)
+    return rows, mism, ties
+
+
+# --- 1b. validate the pair / split chart at true count 0 ----------------------
+def validate_pairs(h17: bool, tol: float):
+    """Check each pair cell's basic action against the EV-optimal choice among
+    split / stand / hit / double / surrender, under both DAS and noDAS (the two
+    pair tables the engine ships). Split EV comes from `evcalc.split_ev`."""
+    model = EVModel(0.0, h17=h17)
+    rows, mism, ties = [], [], 0
+    for das in (True, False):
+        rules = Rules(dealer_hits_soft_17=h17, double_after_split=das)
+        for v in PAIR_VALUES:
+            cards = [_card_for_value(v, 0), _card_for_value(v, 1)]
+            total, soft = hand_total(cards)
+            for up in UPCARDS:
+                can_dbl = rules.can_double_total(min(total, 21))
+                can_sur = rules.late_surrender or rules.early_surrender
+                chart = PAIR_ACT[basic_action(
+                    cards, up, can_double=can_dbl, can_split=True,
+                    can_surrender=can_sur, rules=rules)]
+                ev = model.action_evs(
+                    min(total, 21), up, soft=soft, pair=v, das=das,
+                    max_hands=rules.max_split_hands,
+                    resplit_aces=rules.resplit_aces,
+                    hit_split_aces=rules.hit_split_aces)
+                opts = {"split": ev["split"], "stand": ev["stand"], "hit": ev["hit"]}
+                if can_dbl:
+                    opts["double"] = ev["double"]
+                if can_sur:
+                    opts["surrender"] = -0.5
+                best = max(opts, key=lambda a: opts[a])
+                gap = opts[best] - opts[chart]      # EV lost by playing the chart
+                if best == chart:
+                    status = "ok"
+                elif gap < tol:
+                    status = "tie"
+                    ties += 1
+                else:
+                    status = "MISMATCH"
+                rec = {"pair": pair_label(v), "up": up, "das": das, "chart": chart,
+                       "ev_optimal": best, "ev_gap": round(gap, 5), "status": status}
+                rows.append(rec)
+                if status == "MISMATCH":
+                    mism.append(rec)
     return rows, mism, ties
 
 
@@ -144,6 +209,16 @@ def main() -> None:
         print(f"      !! {r['total']:>2} v {upname(r['up']):<2}  chart {r['chart']}  "
               f"EV-optimal {r['ev_optimal']}  (gap {r['ev_gap']:+.4f})")
 
+    prows, pmism, pties = validate_pairs(a.h17, a.tol)
+    pchecked = len(prows)
+    print("\n  Pair / split cells (true count 0, DAS + noDAS):")
+    print(f"    {pchecked} cells checked  ·  {pchecked - pties - len(pmism)} exact  "
+          f"·  {pties} ties (<{a.tol} EV)  ·  {len(pmism)} mismatches")
+    for r in pmism:
+        print(f"      !! {r['pair']:>4} v {upname(r['up']):<2} "
+              f"{'DAS' if r['das'] else 'noDAS':<5}  chart {r['chart']}  "
+              f"EV-optimal {r['ev_optimal']}  (gap {r['ev_gap']:+.4f})")
+
     derived = derive_indices(a.lo, a.hi, a.step)
     confirmed, extra = match_indices(derived)
     bad = [c for c in confirmed if not c["ok"]]
@@ -160,19 +235,20 @@ def main() -> None:
             print(f"      {d['total']:>2} v {upname(d['up']):<2}  "
                   f"{d['from']}->{d['to']} at TC {d['crossover']:+.2f}")
 
-    print(f"\n  Not validated (need soft / split EVs): "
-          f"{len(BASIC_SOFT)} soft totals + {len(PAIRS_DAS)} pair rows.")
+    print(f"\n  Not validated (need composition-aware soft EVs): "
+          f"{len(BASIC_SOFT)} soft totals.")
 
     if a.out:
         os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
         with open(a.out, "w") as f:
             json.dump({"h17": a.h17, "tol": a.tol, "basic_cells": rows,
-                       "basic_mismatches": mism, "indices_confirmed": confirmed,
+                       "basic_mismatches": mism, "pair_cells": prows,
+                       "pair_mismatches": pmism, "indices_confirmed": confirmed,
                        "indices_extra": extra}, f, indent=2)
         print(f"\n  Wrote {a.out}")
 
     # Non-zero exit if the chart disagrees with EV beyond tie tolerance.
-    raise SystemExit(1 if (mism or bad) else 0)
+    raise SystemExit(1 if (mism or pmism or bad) else 0)
 
 
 if __name__ == "__main__":
