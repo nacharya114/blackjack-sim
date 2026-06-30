@@ -186,6 +186,10 @@
   .pg-msg{font-family:var(--mono); font-size:13px; min-height:20px; margin-bottom:4px}
   .pg-score{margin-top:8px; max-width:480px}
   .pg-mv:disabled{opacity:.35; cursor:default}
+  .pg-bankh{margin:22px 0 8px; font-family:var(--serif); font-size:15px; font-weight:600; color:var(--cream);
+    border-top:1px solid var(--line); padding-top:16px}
+  .pg-bankbar{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px}
+  #pg-bankchart{height:240px}
   .stat .hint{display:inline-block; margin-left:5px; width:13px; height:13px; line-height:12px;
     text-align:center; font-size:10px; border-radius:50%; border:1px solid var(--line);
     color:var(--muted); cursor:help; vertical-align:middle}
@@ -244,12 +248,20 @@
             <option value="0.75" selected>75%</option><option value="0.83">83%</option>
           </select></span>
       </div>
+      <div class="pg-rules" id="pg-opts">
+        <span class="ctl"><label>Table minimum ($)</label>
+          <input id="pg-tablemin" type="number" min="1" step="5" value="25"></span>
+        <span class="ctl"><label>Bankroll / buy-in ($)</label>
+          <input id="pg-bankroll" type="number" min="0" step="100" value="2000"></span>
+        <span class="ctl" style="margin-left:auto"><label>Strategy coach</label>
+          <button class="seg" id="pg-dev-toggle" title="When ON, the coach grades you against Hi-Lo index deviations (the Illustrious 18 + insurance) at the live true count, and counts the at-count deviation as the correct play. When OFF, it grades against flat basic strategy.">Play count deviations</button></span>
+      </div>
       <div class="pg-deck" id="pg-deck"></div>
       <div id="pg-count" class="pg-count" style="display:none"></div>
       <div class="pg-felt" id="pg-felt"></div>
       <div class="pg-actions" id="pg-actions">
-        <span class="ctl"><label>Bet (units)</label>
-          <input id="pg-bet" type="number" min="1" step="1" value="1"></span>
+        <span class="ctl"><label>Bet ($)</label>
+          <input id="pg-bet" type="number" min="5" step="5" value="25"></span>
         <button class="act" id="pg-deal">Deal</button>
         <button class="seg pg-mv" data-a="H">Hit</button>
         <button class="seg pg-mv" data-a="S">Stand</button>
@@ -264,6 +276,10 @@
       <div id="pg-msg" class="pg-msg"></div>
       <div id="pg-coach" class="note" style="margin-top:0"></div>
       <div id="pg-score" class="pg-score"></div>
+      <h3 class="pg-bankh">Bankroll &amp; risk of ruin</h3>
+      <div id="pg-bankbar" class="pg-bankbar"></div>
+      <canvas id="pg-bankchart" width="900" height="240"></canvas>
+      <div class="note" id="pg-banknote"></div>
       <div class="note" id="pg-note"></div>
     </div>
   </section>
@@ -1004,9 +1020,19 @@ function pgIsBJ(cards){ return cards.length===2 && pgHandVal(cards).total===21; 
 function pgInit(){
   PG={shoe:[], pos:0, cut:0, rc:0, shoeDone:false, peek:false,
       state:"betting", dealer:[], hands:[], active:0, holeShown:false,
-      bet:1, insurance:0, lastRoundNet:null, coachMsg:"", coachBad:false,
+      bet:25, insurance:0, lastRoundNet:null, coachMsg:"", coachBad:false, playDev:false,
+      tableMin:25, buyIn:2000, bankroll:2000, rebuys:0, rebought:0,
+      bankHist:[2000], peak:2000, trough:2000,
       stats:{shoes:0, hands:0, decisions:0, mistakes:0, wagered:0, action:0, net:0, evlost:0, exp:0}};
+  pgReadMoney();
   pgNewShoe();
+}
+// Read the table-minimum / buy-in inputs and reset the bankroll session around them.
+function pgReadMoney(){
+  PG.tableMin = Math.max(1, Math.round(+$("pg-tablemin").value)||25);
+  PG.buyIn    = Math.max(PG.tableMin, Math.round(+$("pg-bankroll").value)||PG.tableMin);
+  PG.bankroll = PG.buyIn; PG.rebuys=0; PG.rebought=0;
+  PG.bankHist=[PG.buyIn]; PG.peak=PG.buyIn; PG.trough=PG.buyIn;
 }
 function pgNewShoe(){
   const cards=[];
@@ -1032,10 +1058,15 @@ function pgReadRules(){                            // pull the table rules from 
 }
 function pgApplyRules(){                           // a rule changed -> fresh shoe + fresh session
   pgReadRules();
-  PG.stats={shoes:0, hands:0, decisions:0, mistakes:0, wagered:0, action:0, net:0, evlost:0, exp:0};
-  PG.coachMsg=""; PG.coachBad=false; PG.lastRoundNet=null;
+  pgResetSession();
   pgNewShoe();
   pgRender();
+}
+// Wipe the scoreboard + bankroll history (a fresh session) without touching the shoe.
+function pgResetSession(){
+  pgReadMoney();
+  PG.stats={shoes:0, hands:0, decisions:0, mistakes:0, wagered:0, action:0, net:0, evlost:0, exp:0};
+  PG.coachMsg=""; PG.coachBad=false; PG.lastRoundNet=null;
 }
 function pgDraw(count){ const c=PG.shoe[PG.pos++]; if(count) PG.rc+=pgHiLo(c.r); return c; }
 function pgDecksLeft(){ return (PG.shoe.length-PG.pos)/52; }
@@ -1063,7 +1094,8 @@ const pgCanSurrender = h => PG_RULES.ls && h.cards.length===2 && PG.hands.length
 
 function pgDeal(){
   if(PG.state!=="betting" || PG.shoeDone) return;
-  const bet=Math.max(1, Math.round(+$("pg-bet").value)||1);
+  let bet=Math.max(PG.tableMin, Math.round(+$("pg-bet").value)||PG.tableMin);
+  bet=Math.min(bet, PG.bankroll);                 // never wager more than is on the table
   PG.bet=bet; PG.dealer=[]; PG.insurance=0; PG.holeShown=false;
   PG.coachMsg=""; PG.coachBad=false;
   const sEdge=pgShoeEdge();               // count-based edge BEFORE this round's cards are seen
@@ -1085,13 +1117,18 @@ function pgInsurance(take){
   const tc=pgTrueCount();
   const idx=(STRATEGY_CHART_DATA && STRATEGY_CHART_DATA.insurance_index!=null)
             ? STRATEGY_CHART_DATA.insurance_index : 3;
-  const want=tc>=idx;
+  // basic strategy never insures; only the count deviation takes it at TC >= index
+  const want = PG.playDev ? (tc>=idx) : false;
   if(STRATEGY_CHART_DATA){
     PG.stats.decisions++;
     if(take!==want){ PG.stats.mistakes++; PG.coachBad=true;
-      PG.coachMsg=`✗ Insurance: ${want?"take":"decline"} (TC ${tc>=0?"+":""}${tc.toFixed(1)}, index +${idx})`; }
+      PG.coachMsg = PG.playDev
+        ? `✗ Insurance: ${want?"take":"decline"} (TC ${tc>=0?"+":""}${tc.toFixed(1)}, index +${idx})`
+        : `✗ Insurance: decline — basic strategy never insures`; }
     else { PG.coachBad=false;
-      PG.coachMsg=`✓ ${take?"Took":"Declined"} insurance — correct at TC ${tc>=0?"+":""}${tc.toFixed(1)}`; }
+      PG.coachMsg = (PG.playDev && want)
+        ? `✓ Took insurance — correct deviation at TC ${tc>=0?"+":""}${tc.toFixed(1)} (index +${idx})`
+        : `✓ Declined insurance — correct`; }
   }
   if(take){ PG.insurance=PG.bet/2; PG.stats.action+=PG.insurance; }
   pgAfterInsurance();
@@ -1171,6 +1208,13 @@ function pgResolve(){
     else if(pv.total<dv.total) net-=h.bet;
   }
   PG.stats.net+=net; PG.lastRoundNet=net;
+  // settle against the bankroll, then rebuy if it can't cover the next minimum bet
+  PG.bankroll+=net; PG.bankHist.push(PG.bankroll);
+  PG.trough=Math.min(PG.trough, PG.bankroll); PG.peak=Math.max(PG.peak, PG.bankroll);
+  if(PG.bankroll<PG.tableMin){
+    while(PG.bankroll<PG.tableMin){ PG.bankroll+=PG.buyIn; PG.rebuys++; PG.rebought+=PG.buyIn; }
+    PG.bankHist.push(PG.bankroll); PG.peak=Math.max(PG.peak, PG.bankroll);
+  }
   if(PG.pos>=PG.cut){ PG.shoeDone=true; PG.state="shoe_done"; }
   else PG.state="betting";
   pgRender();
@@ -1193,26 +1237,41 @@ function pgRecommend(h){
   }
   const sec=D.sections.find(s=>s.name===secName); if(!sec) return null;
   const row=sec.rows.find(r=>r.label===label); if(!row) return null;
-  const ti=D.tc_grid.indexOf(0);                // coach against flat basic strategy
+  // grade against flat basic strategy (TC 0) unless playing count deviations,
+  // in which case use the engine's action at the nearest true count on the grid
+  const ti = PG.playDev ? pgNearestTcIdx(pgTrueCount()) : D.tc_grid.indexOf(0);
   return {cell:row.cells[ui], ti};
+}
+function pgNearestTcIdx(tc){
+  const g=STRATEGY_CHART_DATA.tc_grid;
+  let best=0, bd=Infinity;
+  for(let i=0;i<g.length;i++){ const d=Math.abs(g[i]-tc); if(d<bd){ bd=d; best=i; } }
+  return best;
 }
 function pgCoach(h, a){
   const rec=pgRecommend(h); if(!rec) return;
   PG.stats.decisions++;
-  let want=rec.cell.basic;                       // S/H/D/V/P/R
+  let want = PG.playDev ? rec.cell.acts[rec.ti] : rec.cell.basic;   // S/H/D/V/P/R
   if(want==="V") want = pgCanDouble(h) ? "D" : "S";
   else if(want==="D") want = pgCanDouble(h) ? "D" : "H";
   else if(want==="P" && !pgCanSplit(h)) want="H";
   else if(want==="R" && !pgCanSurrender(h)) want="H";
+  const tc=pgTrueCount();
+  const isDev = PG.playDev && rec.cell.acts[rec.ti] !== rec.cell.basic;
   if(a===want){
-    PG.coachBad=false; PG.coachMsg=`✓ ${PG_ACT_NAME[a]} — matches basic strategy`;
+    PG.coachBad=false;
+    PG.coachMsg = isDev
+      ? `✓ ${PG_ACT_NAME[a]} — correct deviation at TC ${tc>=0?"+":""}${tc.toFixed(1)}`
+      : `✓ ${PG_ACT_NAME[a]} — matches ${PG.playDev?"the count play":"basic strategy"}`;
     return;
   }
   PG.stats.mistakes++; PG.coachBad=true;
   const cost=pgEvCost(rec.cell, rec.ti, a);
   PG.stats.evlost += cost*h.bet;
-  PG.coachMsg=`✗ Basic play is ${PG_ACT_NAME[want]} (you chose ${PG_ACT_NAME[a]})`
-            + (cost>0 ? ` · ~−${cost.toFixed(3)} EV/unit` : "");
+  const lead = isDev ? `Deviation play is ${PG_ACT_NAME[want]} at TC ${tc>=0?"+":""}${tc.toFixed(1)}`
+                     : `${PG.playDev?"Correct":"Basic"} play is ${PG_ACT_NAME[want]}`;
+  PG.coachMsg=`✗ ${lead} (you chose ${PG_ACT_NAME[a]})`
+            + (cost>0 ? ` · ~−$${(cost*h.bet).toFixed(2)} EV` : "");
 }
 function pgEvCost(cell, i, a){                    // EV given up vs the best modelled action
   const sp=cell.ev.split?cell.ev.split[i]:null;
@@ -1233,7 +1292,7 @@ const pgHandHTML = (cards, hideHole) => cards.map((c,i)=>pgCardHTML(c, hideHole&
 function pgHandResult(h){
   const dv=pgHandVal(PG.dealer), dBJ=pgIsBJ(PG.dealer), pv=pgHandVal(h.cards);
   let r, cl="";
-  const u=n => (Number.isInteger(n)?n:n.toFixed(1))+"u";
+  const u=n => "$"+(Number.isInteger(n)?n:n.toFixed(2));
   if(h.surr){ r="surrender −"+u(h.bet/2); cl="neg"; }
   else if(h.blackjack && !dBJ){ r="blackjack +"+u(h.bet*PG_RULES.bjPay); cl="pos"; }
   else if(h.blackjack && dBJ){ r="push"; }
@@ -1285,7 +1344,7 @@ function pgRender(){
         + `<span class="pg-tot">${v.total}${v.soft&&v.total<21?" soft":""}</span>`
         + `${h.doubled?' <span class="chip">2&times;</span>':""}${res}</div>`
         + `<div class="pg-hand">${pgHandHTML(h.cards, false)}</div>`
-        + `<div class="pg-bet-lab">${h.bet} u</div></div>`;
+        + `<div class="pg-bet-lab">$${h.bet}</div></div>`;
     });
     felt+=`</div>`;
   }
@@ -1320,7 +1379,8 @@ function pgRender(){
   else if(PG.state==="shoe_done") msg="<b>Shoe complete.</b> The cut card was reached — start a new shoe.";
   else if(PG.state==="betting" && PG.lastRoundNet!=null){
     const n=PG.lastRoundNet;
-    msg=`Last round: <b class="${cls(n)}">${n>=0?"+":""}${Number.isInteger(n)?n:n.toFixed(1)} u</b>. Deal again.`;
+    msg=`Last round: <b class="${cls(n)}">${n>=0?"+$":"−$"}${Math.abs(Number.isInteger(n)?n:+n.toFixed(2))}</b>. `
+      + `Bankroll <b>$${Math.round(PG.bankroll).toLocaleString()}</b>. Deal again.`;
   }
   $("pg-msg").innerHTML=msg;
   $("pg-coach").innerHTML=(STRATEGY_CHART_DATA && PG.coachMsg)
@@ -1329,14 +1389,15 @@ function pgRender(){
   const s=PG.stats;
   const reEdge=s.wagered>0 ? -s.net/s.wagered : 0;
   const eor=s.action>0 ? -s.net/s.action : 0;
-  const fU=n => (Number.isInteger(n)?n:(+n.toFixed(2)));
+  const dM=n => "$"+Math.round(Math.abs(n)).toLocaleString();        // unsigned dollars
+  const sM=n => (n>=0?"+":"−")+dM(n);                                // signed dollars
   let sc=`<div class="stat"><span class="k">Hands played</span><span class="v">${s.hands}</span></div>`
-    + `<div class="stat"><span class="k">Total wagered (original)</span><span class="v">${fU(s.wagered)} u</span></div>`
+    + `<div class="stat"><span class="k">Total wagered (original)</span><span class="v">${dM(s.wagered)}</span></div>`
     + `<div class="stat"><span class="k">Net result</span>`
-    + `<span class="v ${cls(s.net)}">${s.net>=0?"+":""}${fU(s.net)} u</span></div>`
+    + `<span class="v ${cls(s.net)}">${sM(s.net)}</span></div>`
     + `<div class="stat" title="Theoretical expected result given the Hi-Lo count before each hand: the sum of (shoe edge x original bet) over every hand, from the player's side. The shoe edge is an approximate basic-strategy edge for these rules shifted ~0.5% per true count. Compare it with Net result above - the gap between them is variance (luck), which washes out over many hands.">`
     + `<span class="k">Expected net (theoretical)<span class="hint">?</span></span>`
-    + `<span class="v ${cls(s.exp)}">${s.exp>=0?"+":""}${fU(s.exp)} u</span></div>`
+    + `<span class="v ${cls(s.exp)}">${sM(s.exp)}</span></div>`
     + `<div class="stat" title="Realized house edge = -(net result) / total original wager. Positive = the house came out ahead. This is what actually happened to your main bets so far - dominated by luck early on, it converges toward the table's true edge only over thousands of hands. Compare against Expected net above.">`
     + `<span class="k">Realized house edge<span class="hint">?</span></span>`
     + `<span class="v ${reEdge>0?"neg":(reEdge<0?"pos":"")}">${reEdge*100>=0?"+":""}${(reEdge*100).toFixed(2)}%</span></div>`
@@ -1344,10 +1405,11 @@ function pgRender(){
     + `<span class="k">Element of risk (per unit at risk)<span class="hint">?</span></span>`
     + `<span class="v ${eor>0?"neg":(eor<0?"pos":"")}">${eor*100>=0?"+":""}${(eor*100).toFixed(2)}%</span></div>`;
   if(STRATEGY_CHART_DATA)
-    sc+=`<div class="stat"><span class="k">Basic-strategy mistakes</span>`
+    sc+=`<div class="stat"><span class="k">${PG.playDev?"Deviation":"Basic-strategy"} mistakes</span>`
       + `<span class="v ${s.mistakes?"neg":"pos"}">${s.mistakes} / ${s.decisions}`
-      + `${s.evlost>0?` · −${(+s.evlost.toFixed(2))} u EV`:""}</span></div>`;
+      + `${s.evlost>0?` · −$${(+s.evlost.toFixed(2))} EV`:""}</span></div>`;
   $("pg-score").innerHTML=sc;
+  pgRenderBank();
   // dynamic rules note (+ honest coach caveat when the table diverges from the chart)
   const R=PG_RULES;
   const bj = R.bjPay===1.5?"3:2" : R.bjPay===1.2?"6:5" : R.bjPay+"×";
@@ -1357,16 +1419,104 @@ function pgRender(){
     + `The bar shows approximate decks remaining; the red cut card ends the shoe. The Hi-Lo count &mdash; and the `
     + `shoe's approximate theoretical edge at that count &mdash; stay hidden until you <b>Peek</b>. `
     + `A richer 3-D shoe visualizer is on the roadmap.`;
+  if(STRATEGY_CHART_DATA)
+    note += ` <b>Coach grades against ${PG.playDev
+              ? "count deviations (Illustrious 18 + insurance) at the live true count"
+              : "flat basic strategy"}</b> — toggle <b>Play count deviations</b> above to switch.`;
   const chartH17 = STRATEGY_CHART_DATA ? !!STRATEGY_CHART_DATA.h17 : false;
   if(STRATEGY_CHART_DATA && (R.h17!==chartH17 || !R.das || R.decks<4))
-    note += ` <span class="sub">The basic-strategy coach follows the standard 6-deck S17/DAS chart, so a few `
+    note += ` <span class="sub">The strategy coach follows the standard 6-deck S17/DAS chart, so a few `
           + `of its hints can differ slightly under these rules.</span>`;
   $("pg-note").innerHTML=note;
 }
 
+// ---- bankroll, rebuys & risk-of-ruin (the variance panel) ----
+const PG_HAND_SD=1.15;   // approx std dev of a flat-bet basic-strategy hand, in bet units
+function pgNormCdf(z){ return 0.5*(1+pgErf(z/Math.SQRT2)); }
+function pgErf(x){                                   // Abramowitz & Stegun 7.1.26
+  const t=1/(1+0.3275911*Math.abs(x));
+  const y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);
+  return x>=0?y:-y;
+}
+// Probability of busting the buy-in within an N-hand session, flat-betting the table
+// minimum at the current rules' edge (first-passage of a drifting random walk to -B).
+function pgRiskOfRuin(N){
+  const m=-pgBaseEdge(), s=PG_HAND_SD, B=PG.buyIn/PG.tableMin;
+  if(B<=0) return 1;
+  if(N<=0) return 0;
+  const sqN=Math.sqrt(N);
+  const z1=(-B - m*N)/(s*sqN), z2=(-B + m*N)/(s*sqN);
+  const p=pgNormCdf(z1) + Math.exp(-2*m*B/(s*s))*pgNormCdf(z2);
+  return Math.max(0, Math.min(1, p));
+}
+function pgRenderBank(){
+  const ror=pgRiskOfRuin(100);
+  const chip=(lab,val,cl)=>`<span class="chip">${lab} <b class="${cl||""}">${val}</b></span>`;
+  const dM=n => "$"+Math.round(Math.abs(n)).toLocaleString();
+  const swing=PG.bankroll-PG.buyIn;
+  $("pg-bankbar").innerHTML =
+      chip("Bankroll", dM(PG.bankroll), swing>0?"pos":(swing<0?"neg":""))
+    + chip("Buy-in", dM(PG.buyIn))
+    + chip("Rebuys", PG.rebuys, PG.rebuys?"neg":"pos")
+    + chip("Total bought in", dM(PG.buyIn+PG.rebought))
+    + chip("Peak", dM(PG.peak), "pos")
+    + chip("Trough", dM(PG.trough), PG.trough<PG.buyIn?"neg":"")
+    + chip("Risk of ruin", (ror*100).toFixed(ror>=0.0995?0:1)+"%", ror>=0.5?"neg":(ror<0.05?"pos":""));
+  pgDrawBankChart();
+  $("pg-banknote").innerHTML =
+    `The line tracks your <b>bankroll</b> after every settled hand; the dashed line is the original `
+    + `<b>$${Math.round(PG.buyIn).toLocaleString()}</b> buy-in and the red line is broke. Each time the bankroll `
+    + `can't cover the $${PG.tableMin} minimum it auto-<b>rebuys</b> another buy-in (a vertical jump). `
+    + `<span class="hint" title="First-passage estimate: probability of busting the buy-in within ~100 hands, flat-betting the table minimum at this game's ~${(pgBaseEdge()*100).toFixed(2)}% edge with a per-hand std dev of ${PG_HAND_SD}. Flat-betting a negative game, risk of ruin only climbs the longer you play — bet ramps by true count (see the Analysis tab) are how counters bend it back down.">Risk of ruin</span> is the chance of going broke within a ~100-hand hour at these stakes.`;
+}
+function pgDrawBankChart(){
+  const cvs=$("pg-bankchart"); if(!cvs) return;
+  const ctx=cvs.getContext("2d"), W=cvs.width, H=cvs.height;
+  const padL=64, padR=14, padT=14, padB=26;
+  ctx.clearRect(0,0,W,H);
+  const hist=PG.bankHist, n=hist.length-1;
+  let lo=Math.min(0, ...hist), hi=Math.max(PG.buyIn, ...hist);
+  const pad=(hi-lo)*0.08||100; lo-=pad; hi+=pad;
+  const x=i => padL + (W-padL-padR)*(n>0 ? i/n : 0.5);
+  const y=v => padT + (H-padT-padB)*(1-(v-lo)/(hi-lo));
+  // grid + y ticks
+  ctx.strokeStyle="rgba(255,255,255,.08)"; ctx.fillStyle="#8caa9b";
+  ctx.font="11px ui-monospace,monospace"; ctx.lineWidth=1; ctx.textAlign="right";
+  for(let t=0;t<=4;t++){
+    const val=lo+(hi-lo)*t/4, yy=y(val);
+    ctx.beginPath(); ctx.moveTo(padL,yy); ctx.lineTo(W-padR,yy); ctx.stroke();
+    ctx.fillText("$"+Math.round(val).toLocaleString(), padL-8, yy+3);
+  }
+  // buy-in (dashed brass) and broke (red) reference lines
+  ctx.strokeStyle="rgba(201,162,39,.5)"; ctx.setLineDash([5,4]);
+  ctx.beginPath(); ctx.moveTo(padL,y(PG.buyIn)); ctx.lineTo(W-padR,y(PG.buyIn)); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.strokeStyle="rgba(224,112,92,.55)";
+  ctx.beginPath(); ctx.moveTo(padL,y(0)); ctx.lineTo(W-padR,y(0)); ctx.stroke();
+  if(n<1){
+    ctx.fillStyle="#8caa9b"; ctx.textAlign="center";
+    ctx.fillText("Play some hands to chart the bankroll.", (padL+W-padR)/2, (padT+H-padB)/2);
+    return;
+  }
+  // bankroll trajectory
+  ctx.beginPath(); ctx.lineWidth=2; ctx.strokeStyle=PG.bankroll>=PG.buyIn?"#5fcf9a":"#e2c463";
+  hist.forEach((v,i)=>{ const xx=x(i), yy=y(v); i?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy); });
+  ctx.stroke();
+  // x label
+  ctx.fillStyle="#8caa9b"; ctx.textAlign="center";
+  ctx.fillText(`${n} hand${n===1?"":"s"} · ${PG.rebuys} rebuy${PG.rebuys===1?"":"s"}`,
+               (padL+W-padR)/2, H-7);
+}
+
+function pgSyncBetInput(){                         // keep the bet box in step with the table minimum
+  const b=$("pg-bet");
+  b.min=PG.tableMin; b.step=PG.tableMin;
+  if((+b.value||0)<PG.tableMin) b.value=PG.tableMin;
+}
 function setupPractice(){
   pgReadRules();                                  // seed PG_RULES from the controls
   pgInit();
+  pgSyncBetInput();
   $("pg-deal").onclick=pgDeal;
   $("pg-newshoe").onclick=()=>{ pgNewShoe(); pgRender(); };
   $("pg-peek").onclick=()=>{ PG.peek=!PG.peek; $("pg-peek").classList.toggle("on", PG.peek); pgRender(); };
@@ -1374,6 +1524,15 @@ function setupPractice(){
   $("pg-ins-y").onclick=()=>pgInsurance(true);
   $("pg-ins-n").onclick=()=>pgInsurance(false);
   document.querySelectorAll("#pg-rules select").forEach(s=> s.onchange=pgApplyRules);
+  // money inputs reset the bankroll session (no reshuffle); the bet box tracks the minimum
+  ["pg-tablemin","pg-bankroll"].forEach(id=>$(id).onchange=()=>{
+    pgResetSession(); pgSyncBetInput(); pgRender();
+  });
+  $("pg-dev-toggle").onclick=()=>{
+    PG.playDev=!PG.playDev;
+    $("pg-dev-toggle").classList.toggle("on", PG.playDev);
+    pgRender();
+  };
   pgRender();
 }
 
